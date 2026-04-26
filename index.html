@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bus Dispatcher Pro v7</title>
+    <style>
+        :root {
+            --primary: #2563eb; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; 
+            --accent: #0f172a; --danger: #ef4444; --warning: #f59e0b; --shuttle: #8b5cf6;
+        }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 10px; }
+        .container { max-width: 650px; margin: 0 auto; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: var(--accent); color: white; padding: 10px 15px; border-radius: 12px; }
+        #live-clock { font-family: 'Courier New', monospace; font-size: 1.3rem; font-weight: bold; color: #60a5fa; }
+
+        .tabs { display: flex; gap: 4px; margin-bottom: 10px; background: #e2e8f0; padding: 4px; border-radius: 10px; }
+        .tab-btn {flex: 1;padding: 10px 5px;border: none;border-radius: 7px;cursor: pointer;background: transparent; /* 背景なし */color: #64748b;font-weight: bold;transition: 0.3s;}
+        .tab-btn.active {background: var(--primary); color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);transform: translateY(-1px);}
+
+        .card { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; position: relative; transition: all 0.3s ease; }
+        
+        /* シャトル表示用 */
+        .shuttle-badge { display: none; position: absolute; top: 10px; right: 15px; background: var(--shuttle); color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; font-weight: bold; animation: pulse 2s infinite; }
+        .is-shuttle .shuttle-badge { display: block; }
+        .is-shuttle { border: 2px solid var(--shuttle); background: #fdfaff; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+
+        .day-type-label { font-size: 0.75rem; font-weight: bold; color: #64748b; margin-bottom: 5px; }
+        .direction-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+        .dir-box { background: #f1f5f9; padding: 10px; border-radius: 10px; text-align: center; }
+        .dir-label { font-size: 0.7rem; color: #64748b; font-weight: bold; margin-bottom: 5px; }
+        .dir-time { font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; color: var(--danger); }
+
+        .view-timetable-btn { width: 100%; padding: 10px; margin-top: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        #timetable-display { margin-top: 15px; border-top: 2px solid #eee; padding-top: 15px; }
+        .timetable-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .timetable-col h4 { margin: 0 0 10px 0; font-size: 0.8rem; background: #eee; padding: 4px; text-align: center; border-radius: 4px; }
+        .time-row { font-family: monospace; font-size: 0.9rem; padding: 4px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; }
+
+        .in-bus-card { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 15px; border-radius: 10px; border: 1px solid #e2e8f0; border-left: 5px solid var(--primary); margin-bottom: 5px; }
+        .out-btn { background: #fee2e2; color: var(--danger); border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: bold; }
+
+        .master-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .in-btn { background: #fff; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-weight: bold; box-shadow: 0 2px 0 #cbd5e1; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; }
+        .clickable-id { color: var(--primary); text-decoration: underline; cursor: pointer; font-weight: bold; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px dotted #ddd; }
+        .del-history-btn { background: none; border: 1px solid #ccc; color: #999; font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; cursor: pointer; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <span style="font-weight: bold;">東京工科大学バス運用調査 v7</span>
+        <div id="live-clock">00:00:00</div>
+        
+        <div id="live-date" style="font-size: 0.7rem; color: #60a5fa; font-family: monospace;">0000/00/00</div>
+    </div>
+
+    <div class="tabs">
+    <button id="tab-A" class="tab-btn active" onclick="switchTab('A')">八王子線</button>
+    <button id="tab-B" class="tab-btn" onclick="switchTab('B')">みなみ野線</button>
+    <button id="tab-C" class="tab-btn" onclick="switchTab('C')">学生会館線</button>
+    <button id="tab-Detail" class="tab-btn detail-tab" onclick="switchTab('Detail')">編成/履歴</button>
+</div>
+
+    <div id="main-view">
+        <div id="route-card" class="card">
+            <div id="shuttle-indicator" class="shuttle-badge">SHUTTLE MODE</div>
+            <div id="day-label" class="day-type-label">ダイヤ：読み込み中...</div>
+            
+            <div class="direction-container">
+                <div class="dir-box">
+                    <div class="dir-label">▶ キャンパス行</div>
+                    <div id="count-out" class="dir-time">--:--</div>
+                </div>
+                <div class="dir-box">
+                    <div class="dir-label">◀ 駅・会館行</div>
+                    <div id="count-in" class="dir-time">--:--</div>
+                </div>
+            </div>
+
+            <button class="view-timetable-btn" onclick="toggleTimetable()">本日の時刻表を表示</button>
+            
+            <div id="timetable-display" class="hidden">
+                <div id="shuttle-info" style="font-size: 0.75rem; color: var(--shuttle); margin-bottom: 10px; font-weight: bold;"></div>
+                <div class="timetable-grid">
+                    <div class="timetable-col"><h4>キャンパス行</h4><div id="list-out" class="time-list-vertical"></div></div>
+                    <div class="timetable-col"><h4>駅・会館行</h4><div id="list-in" class="time-list-vertical"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="op-list" style="margin-bottom: 15px;"></div>
+
+        <div class="card">
+            <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; color: #64748b;">車両を選択して「IN」</div>
+            <div id="master-grid" class="master-grid"></div>
+        </div>
+    </div>
+
+    <div id="detail-view" class="hidden">
+        <div class="card">
+            <h3 style="margin-top:0;">編成一覧</h3>
+            <table id="detail-table">
+                <thead><tr><th>編成ID</th><th>型式</th><th>特徴</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div id="history-box" class="hidden" style="margin-top:15px; border: 1px dashed #ccc; padding: 10px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h4 id="history-title" style="margin:0;"></h4>
+                    <button onclick="document.getElementById('history-box').classList.add('hidden')" style="font-size: 0.7rem; cursor: pointer;">閉じる</button>
+                </div>
+                <div id="history-content" style="font-size:0.8rem; line-height: 1.5;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // shuttleRange: [開始時間, 終了時間] で指定（24時間表記）
+    const travelTimes = {
+        'A': { out: 18, in: 15 }, // 八王子：着18分後 / 駅15分後
+        'B': { out: 10, in: 7 },  // みなみ野：着10分後 / 駅7分後
+        'C': { out: 6,  in: 6 }   // 学生会館：両方6分後
+    };
+
+    const schedules = {
+        'A': {
+            weekday: { 
+                out: ["07:30", "07:40","07:45","07:50","07:55", "09:15","09:20","09:25", "9:30", "9:35", "9:40", "9:45", "9:50", "9:55", "10:00", "10:05", "10:10", "10:15", "10:20", "10:25", "10:30", "10:35", "10:40", "10:45", "10:50", "11:00", "11:10", "11:20", "11:30", "11:40", "11:50", "12:05", "12:15", "12:20", "12:25", "12:30", "12:35", "12:40", "12:45", "12:50", "13:00", "13:10", "13:20", "13:30", "13:40", "13:50", "14:00", "14:10", "14:20", "14:30", "14:40", "14:50", "15:00", "15:11","15:41", "15:51", "16:01", "16:11", "16:21", "16:31","17:41", "17:51", "18:01", "18:11", "18:21", "18:31", "18:41", "18:51", "19:21", "19:31", "19:41", "19:51", "20:01", "20:11", "20:21", "20:31", "20:41", "20:56", "21:11", "21:21", "21:26", "21:31"], 
+                in: ["07:15", "07:28","07:33","07:38","07:43","9:13", "9:18", "9:23", "9:28", "9:33", "9:38", "9:43", "9:48", "9:53", "9:58", "10:03", "10:08", "10:13", "10:18", "10:23", "10:28", "10:33", "10:38", "10:48", "10:58", "11:08", "11:18", "11:28", "11:38", "11:53", "12:03", "12:08", "12:13", "12:18", "12:23", "12:28", "12:33", "12:38", "12:48", "12:58", "13:08", "13:18", "13:28", "13:38", "13:48", "13:58", "14:08", "14:18", "14:28", "14:38", "14:48", "15:00","15:30", "15:40", "15:50", "16:00", "16:10", "16:20","17:30", "17:40", "17:50", "18:00", "18:10", "18:20", "18:30", "18:40", "19:10", "19:20", "19:30", "19:40", "19:50", "20:00", "20:10", "20:20", "20:30", "20:45", "21:00", "21:10", "21:15", "21:20"],
+                shuttleRange: [["07:55", "09:15"],["15:11","15:41"],["16:31","17:41"],["18:51","19:21"]]
+            },
+            weekend: { 
+                out: ["09:00", "11:00", "13:00", "15:00"], 
+                in: ["10:00", "12:00", "14:00", "16:00"], 
+                shuttleRange: null
+            }
+        },
+        'B': {
+            weekday: { out: ["7:29", "7:38", "7:44", "7:52", "7:58", "8:06", "8:15", "9:25", "9:34", "9:44", "9:55", "10:00", "10:10", "10:18", "10:24", "10:30", "10:40", "10:46", "10:56", "11:03", "11:16", "11:23", "11:36", "11:43", "11:56", "12:03", "12:09", "12:16", "12:23", "12:29", "12:36", "12:43", "12:49", "12:56", "13:03", "13:16", "13:23", "13:36", "13:43", "13:56", "14:03", "14:16", "14:23", "14:36", "14:43", "14:56", "15:03", "15:09", "15:20", "15:28", "15:40", "15:51", "16:03", "16:15", "16:26", "16:36", "16:46", "17:25", "17:33", "17:43", "17:51", "18:00", "18:08", "18:16", "18:27", "18:37", "18:49", "18:59", "19:11", "19:21", "19:32", "19:43", "19:54", "20:05", "20:15", "20:25", "20:36", "20:45", "20:56", "21:07", "21:18", "21:27"], 
+                       in: ["7:22", "7:31", "7:37", "7:45", "7:51", "7:59", "8:08", "9:18", "9:27", "9:37", "9:48", "9:53", "10:03", "10:11", "10:17", "10:23", "10:33", "10:39", "10:49", "10:56", "11:09", "11:16", "11:29", "11:36", "11:49", "11:56", "12:02", "12:09", "12:16", "12:22", "12:29", "12:36", "12:42", "12:49", "12:56", "13:09", "13:16", "13:29", "13:36", "13:49", "13:56", "14:09", "14:16", "14:29", "14:36", "14:49", "14:56", "15:02", "15:13", "15:21", "15:33", "15:44", "15:56", "16:08", "16:19", "16:29", "16:39", "17:18", "17:26", "17:36", "17:44", "17:53", "18:01", "18:09", "18:20", "18:30", "18:42", "18:52", "19:04", "19:14", "19:25", "19:36", "19:47", "19:58", "20:08", "20:18", "20:29", "20:38", "20:49", "21:00", "21:11", "21:20"], 
+                       shuttleRange: [["08:15","09:25"],["16:46","17:25"],["18:59","19:11"]] },
+
+            weekend: { out: ["08:16","08:44","09:11","09:34", "10:25","11:36","12:36","13:16","14:16","15:29","16:29","17:20","17:49","18:20","19:14"], 
+                        in: ["08:08", "08:36","09:03","09:26","10:17","11:28","12:28","13:08","14:08","15:21","16:21","17:12","17:41","18:12", "19:06"], shuttleRange: null }
+        },
+        'C': {
+            weekday: { out: ["08:14", "08:28","08:42","08:56","09:10","10:24","10:48", "17:08"], 
+                       in: ["08:06", "08:22","08:36","08:50","09:04","10:18","10:42", "17:02"], shuttleRange: null }, // 昼間だけシャトル
+            weekend: { out: ["09:00", "12:00"], in: ["10:30", "13:30"], shuttleRange: null }
+        }
+    };
+       
+
+    const busMaster = [
+        { id: '37', type: '三菱ふそう エアロスター', note: '運用離脱' },
+        { id: '38', type: '三菱ふそう エアロスター', note: '運用離脱' },
+        { id: '96', type: '三菱ふそう エアロスター', note: '' },
+        { id: '97', type: '三菱ふそう エアロスター', note: '' },
+        { id: '98', type: '三菱ふそう エアロスター', note: '' },
+        { id: '100', type: '三菱ふそう エアロスター', note: '' },
+        { id: '181', type: '日野ブルーリボン', note: '' },
+        { id: '182', type: '日野ブルーリボン', note: '' },
+        { id: '183', type: '日野ブルーリボン', note: '' },
+        { id: '315', type: '三菱ふそう エアロスター', note: '' },
+        { id: '337', type: '三菱ふそう エアロスター', note: '' },
+        { id: '338', type: '三菱ふそう エアロスター', note: '' },
+        { id: '339', type: '日野ブルーリボン', note: '' },
+        { id: '374', type: 'いすゞエルガ', note: '' },
+        { id: '375', type: 'いすゞエルガ', note: '' },
+        { id: '387', type: 'いすゞエルガ', note: '' },
+        { id: '388', type: 'いすゞエルガ', note: '' },
+        { id: '389', type: '日野ブルーリボン', note: '' },
+        { id: '398', type: '三菱ふそう エアロスター ', note: '' },
+        { id: '399', type: '三菱ふそう エアロスター', note: '' },
+        { id: '411', type: 'いすゞエルガ', note: '' },
+        { id: '412', type: '三菱ふそう エアロスター', note: '' },
+        { id: '413', type: '三菱ふそう エアロスター', note: '' },
+        { id: '416', type: '三菱ふそう エアロスター', note: '' },
+        { id: '417', type: '三菱ふそう エアロスター', note: '' },
+        { id: '418', type: '三菱ふそう エアロスター', note: '' },
+        { id: '421', type: 'いすゞエルガ', note: '' },
+        { id: '454', type: 'トヨタ・SORA', note: '' },
+        { id: '455', type: 'トヨタ・SORA', note: '' },
+        { id: '465', type: 'トヨタ・SORA', note: '' }
+    ];
+
+    let currentRoute = 'A';
+
+    function getDayType() {
+        const day = new Date().getDay();
+        return (day === 0 || day === 6) ? 'weekend' : 'weekday';
+    }
+
+    // 現在時刻がシャトル時間内かどうか判定
+    function isCurrentlyShuttle(range) {
+        if (!range) return false;
+        const now = new Date();
+        const nowTotal = now.getHours() * 60 + now.getMinutes();
+        
+        const [startH, startM] = range[0].split(':').map(Number);
+        const [endH, endM] = range[1].split(':').map(Number);
+        
+        const startTotal = startH * 60 + startM;
+        const endTotal = endH * 60 + endM;
+        
+        return nowTotal >= startTotal && nowTotal <= endTotal;
+    }
+
+    function updateClock() {
+        const now = new Date();
+        
+        // 時刻を更新
+        document.getElementById('live-clock').innerText = now.toTimeString().split(' ')[0];
+        
+        // 日付を更新（年/月/日）
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+        const day = dayNames[now.getDay()];
+        
+        document.getElementById('live-date').innerText = `${y}/${m}/${d} (${day})`;
+    }
+
+
+    function switchTab(tab) {
+    const isDetail = tab === 'Detail';
+    
+    // 表示エリアの切り替え
+    document.getElementById('main-view').classList.toggle('hidden', isDetail);
+    document.getElementById('detail-view').classList.toggle('hidden', !isDetail);
+    
+    if (!isDetail) {
+        currentRoute = tab;
+        document.getElementById('timetable-display').classList.add('hidden');
+        renderAll();
+    }
+
+    // --- ここを書き換え：IDを使って確実に色をつける ---
+    // 一旦すべてのボタンから active を消す
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    
+    // 選択されたタブのIDにだけ active をつける
+    const activeTab = document.getElementById('tab-' + tab);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+}
+
+    function calcNext(times) {
+        const now = new Date();
+        for (let t of times) {
+            const [h, m] = t.split(':').map(Number);
+            const target = new Date(); target.setHours(h, m, 0, 0);
+            const diffMs = target - now;
+            if (diffMs > 0) {
+                const sec = Math.floor(diffMs / 1000);
+                return { min: Math.floor(sec / 60), sec: sec % 60, total: sec };
+            }
+        }
+        return null;
+    }
+
+    function updateCountdowns() {
+        const dayType = getDayType();
+        const config = schedules[currentRoute][dayType];
+        
+        // 時間によるシャトル判定
+        const shuttleActive = isCurrentlyShuttle(config.shuttleRange);
+        const card = document.getElementById('route-card');
+        card.classList.toggle('is-shuttle', shuttleActive);
+        
+        document.getElementById('day-label').innerText = `運行ダイヤ：${dayType === 'weekend' ? '休日' : '平日'}`;
+
+        const resOut = calcNext(config.out);
+        const resIn = calcNext(config.in);
+        const format = (res) => res ? `${res.min}m ${res.sec}s` : "終了";
+        document.getElementById('count-out').innerText = format(resOut);
+        document.getElementById('count-in').innerText = format(resIn);
+    }
+
+
+    function renderAll() {
+        const active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
+        document.getElementById('op-list').innerHTML = active.map(id => `
+            <div class="in-bus-card"><strong>${id}</strong><button class="out-btn" onclick="busAction('${id}', 'out')">OUT</button></div>
+        `).join('') || '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.8rem;">現在運用なし</div>';
+        updateCountdowns();
+    }
+    function toggleTimetable() {
+        const el = document.getElementById('timetable-display');
+        el.classList.toggle('hidden');
+        if (!el.classList.contains('hidden')) {
+            const dayType = getDayType();
+            const config = schedules[currentRoute][dayType];
+            const tTime = travelTimes[currentRoute]; // 現在の路線の所要時間を取得
+            
+            const shuttleInfo = document.getElementById('shuttle-info');
+            shuttleInfo.innerText = config.shuttleRange ? 
+                `【シャトル時間帯】 ${config.shuttleRange[0]} ～ ${config.shuttleRange[1]}` : "";
+
+            // 時刻に分を加算する補助関数
+            const addMinutes = (timeStr, mins) => {
+                const [h, m] = timeStr.split(':').map(Number);
+                const date = new Date();
+                date.setHours(h, m + mins);
+                return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+            };
+
+            const fill = (id, list, addMins) => {
+                document.getElementById(id).innerHTML = list.map(t => `
+                    <div class="time-row">
+                        <span>${t} <small style="color:#64748b;">▶</small> ${addMinutes(t, addMins)}</span>
+                        <span style="font-size:0.7rem; color:#64748b;">着</span>
+                    </div>
+                `).join('');
+            };
+            
+            fill('list-out', config.out, tTime.out);
+            fill('list-in', config.in, tTime.in);
+        }
+    }
+
+    function busAction(id, type) {
+        let active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
+        let history = JSON.parse(localStorage.getItem(`history_${id}`)) || [];
+        if (type === 'in' && !active.includes(id)) {
+            active.push(id);
+            const now = new Date();
+            history.push({ hid: Date.now(), route: currentRoute, date: `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}` });
+        }
+        if (type === 'out') active = active.filter(x => x !== id);
+        localStorage.setItem(`active_${currentRoute}`, JSON.stringify(active));
+        localStorage.setItem(`history_${id}`, JSON.stringify(history));
+        renderAll();
+    }
+
+    function deleteHistory(busId, hid) {
+        if (!confirm('この履歴を削除しますか？')) return;
+        let history = JSON.parse(localStorage.getItem(`history_${busId}`)) || [];
+        history = history.filter(h => h.hid !== hid);
+        localStorage.setItem(`history_${busId}`, JSON.stringify(history));
+        showHistory(busId);
+    }
+
+    function showHistory(id) {
+        const history = JSON.parse(localStorage.getItem(`history_${id}`)) || [];
+        const box = document.getElementById('history-box');
+        box.classList.remove('hidden');
+        document.getElementById('history-title').innerText = `${id} の履歴`;
+        document.getElementById('history-content').innerHTML = history.length ? 
+            history.slice().reverse().map(h => `<div class="history-item"><span>・ ${h.date} [${h.route}]</span><button class="del-history-btn" onclick="deleteHistory('${id}', ${h.hid})">削除</button></div>`).join('') : "履歴なし";
+    }
+
+    document.getElementById('master-grid').innerHTML = busMaster.map(b => `<div class="in-btn" onclick="busAction('${b.id}', 'in')">${b.id}</div>`).join('');
+    document.querySelector('#detail-table tbody').innerHTML = busMaster.map(b => `<tr><td class="clickable-id" onclick="showHistory('${b.id}')">${b.id}</td><td>${b.type}</td><td>${b.note}</td></tr>`).join('');
+    
+    setInterval(updateClock, 1000);
+    setInterval(updateCountdowns, 1000);
+    renderAll();
+</script>
+</body>
+</html>

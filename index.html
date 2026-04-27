@@ -223,7 +223,7 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${tab}`));
     }
 
-    function calcNext(times) {
+   function calcNext(times) {
         const now = new Date();
         for (let t of times) {
             const [h, m] = t.split(':').map(Number);
@@ -231,7 +231,9 @@
             const diffMs = target - now;
             if (diffMs > 0) {
                 const sec = Math.floor(diffMs / 1000);
-                return { min: Math.floor(sec / 60), sec: sec % 60 };
+                const min = Math.floor(sec / 60);
+                const remainderSec = String(sec % 60).padStart(2, '0'); // 秒を2桁に固定
+                return { min: min, sec: remainderSec };
             }
         }
         return null;
@@ -240,9 +242,14 @@
     function updateCountdowns() {
         const dayType = getDayType();
         const config = schedules[currentRoute][dayType];
+        
+        // シャトル判定などの既存処理...
         document.getElementById('route-card').classList.toggle('is-shuttle', isCurrentlyShuttle(config.shuttleRange));
         document.getElementById('day-label').innerText = `運行ダイヤ：${dayType === 'weekend' ? '休日' : '平日'}`;
-        const format = (res) => res ? `${res.min}m ${res.sec}s` : "終了";
+
+        // フォーマットを 5:01 形式に変更
+        const format = (res) => res ? `${res.min}:${res.sec}` : "終了";
+        
         document.getElementById('count-out').innerText = format(calcNext(config.out));
         document.getElementById('count-in').innerText = format(calcNext(config.in));
     }

@@ -32,69 +32,6 @@
   });
 </script>
 
-<script>
-    // --- 既存のデータ定義（travelTimes, schedules, busMaster）をここに配置 ---
-
-    // 1. 日付リセット機能（Firebase上の日付をチェック）
-    async function checkAndResetDaily() {
-        const today = new Date().toLocaleDateString('ja-JP');
-        const configRef = window.fs.doc(window.db, "system", "lastReset");
-        
-        try {
-            const docSnap = await window.fs.getDoc(configRef);
-            const lastResetDate = docSnap.exists() ? docSnap.data().date : "";
-
-            if (lastResetDate !== today) {
-                // 全路線の運用状況をFirebase上で空にする
-                const routes = ['A', 'B', 'C'];
-                for (const route of routes) {
-                    await window.fs.setDoc(window.fs.doc(window.db, "active_buses", route), { buses: [] });
-                }
-                // リセットした日付を今日に更新
-                await window.fs.setDoc(configRef, { date: today });
-                console.log("運用データをリセットしました");
-            }
-        } catch (e) {
-            console.error("リセット処理でエラーが発生しました:", e);
-        }
-    }
-
-    // 2. リアルタイム同期（Firebaseからデータを取ってくる）
-    function syncActiveBuses() {
-        ['A', 'B', 'C'].forEach(route => {
-            window.fs.onSnapshot(window.fs.doc(window.db, "active_buses", route), (docSnap) => {
-                if (docSnap.exists()) {
-                    const activeList = docSnap.data().buses;
-                    localStorage.setItem(`active_${route}`, JSON.stringify(activeList));
-                    if (currentRoute === route) renderAll();
-                }
-            });
-        });
-    }
-
-    // 3. 運用アクション（Firebaseへデータを送る）
-    async function busAction(id, type) {
-        let active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
-        
-        if (type === 'in' && !active.includes(id)) {
-            active.push(id);
-            const now = new Date();
-            // 履歴保存
-            await window.fs.addDoc(window.fs.collection(window.db, "bus_history"), {
-                busId: id,
-                route: currentRoute,
-                timestamp: now
-            });
-        } else if (type === 'out') {
-            active = active.filter(x => x !== id);
-        }
-
-        // Firebase（Firestore）を更新。これで他の人の画面も連動して動きます
-        await window.fs.setDoc(window.fs.doc(window.db, "active_buses", currentRoute), { buses: active });
-    }
-
-    // --- 以下、既存の updateClock, renderAll, switchTab などを継続 ---
-</script>
 
     <style>
         :root {
@@ -371,26 +308,72 @@
     }
 
     function renderAll() {
-        const active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
-        document.getElementById('op-list').innerHTML = active.map(id => `
-            <div class="in-bus-card"><strong>${id}</strong><button class="out-btn" onclick="busAction('${id}', 'out')">OUT</button></div>
-        `).join('') || '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.8rem;">現在運用なし</div>';
-        updateCountdowns();
+    // Firebaseから同期された最新のリストをLocalStorage経由で取得
+    const active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
+    
+    document.getElementById('op-list').innerHTML = active.map(id => `
+        <div class="in-bus-card">
+            <strong>${id}</strong>
+            <button class="out-btn" onclick="busAction('${id}', 'out')">OUT</button>
+        </div>
+    `).join('') || '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.8rem;">現在運用なし</div>';
+    
+    updateCountdowns();
+}
+
+function syncActiveBuses() {
+        ['A', 'B', 'C'].forEach(route => {
+            window.fs.onSnapshot(window.fs.doc(window.db, "active_buses", route), (docSnap) => {
+                if (docSnap.exists()) {
+                    const activeList = docSnap.data().buses;
+                    localStorage.setItem(`active_${route}`, JSON.stringify(activeList));
+                    if (currentRoute === route) renderAll();
+                }
+            });
+        });
     }
 
-    function busAction(id, type) {
+    async function busAction(id, type) {
         let active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
-        let history = JSON.parse(localStorage.getItem(`history_${id}`)) || [];
+        
         if (type === 'in' && !active.includes(id)) {
             active.push(id);
             const now = new Date();
-            history.push({ hid: Date.now(), route: currentRoute, date: `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}` });
+            // 履歴保存
+            await window.fs.addDoc(window.fs.collection(window.db, "bus_history"), {
+                busId: id,
+                route: currentRoute,
+                timestamp: now
+            });
         } else if (type === 'out') {
             active = active.filter(x => x !== id);
         }
-        localStorage.setItem(`active_${currentRoute}`, JSON.stringify(active));
-        localStorage.setItem(`history_${id}`, JSON.stringify(history));
-        renderAll();
+
+        // Firebase（Firestore）を更新。これで他の人の画面も連動して動きます
+        await window.fs.setDoc(window.fs.doc(window.db, "active_buses", currentRoute), { buses: active });
+    }
+
+    async function checkAndResetDaily() {
+        const today = new Date().toLocaleDateString('ja-JP');
+        const configRef = window.fs.doc(window.db, "system", "lastReset");
+        
+        try {
+            const docSnap = await window.fs.getDoc(configRef);
+            const lastResetDate = docSnap.exists() ? docSnap.data().date : "";
+
+            if (lastResetDate !== today) {
+                // 全路線の運用状況をFirebase上で空にする
+                const routes = ['A', 'B', 'C'];
+                for (const route of routes) {
+                    await window.fs.setDoc(window.fs.doc(window.db, "active_buses", route), { buses: [] });
+                }
+                // リセットした日付を今日に更新
+                await window.fs.setDoc(configRef, { date: today });
+                console.log("運用データをリセットしました");
+            }
+        } catch (e) {
+            console.error("リセット処理でエラーが発生しました:", e);
+        }
     }
 
     function showHistory(id) {
@@ -414,6 +397,16 @@
     
     setInterval(updateClock, 1000);
     setInterval(updateCountdowns, 1000);
+    window.addEventListener('load', () => {
+    if (typeof syncActiveBuses === 'function') {
+        syncActiveBuses();
+    }
+    if (typeof checkAndResetDaily === 'function') {
+        checkAndResetDaily();
+    }
+});
+
+
     renderAll();
 </script>
 </body>

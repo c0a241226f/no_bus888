@@ -376,14 +376,36 @@ function syncActiveBuses() {
         }
     }
 
-    function showHistory(id) {
-        const history = JSON.parse(localStorage.getItem(`history_${id}`)) || [];
-        const box = document.getElementById('history-box');
-        box.classList.remove('hidden');
-        document.getElementById('history-title').innerText = `${id} の履歴`;
-        document.getElementById('history-content').innerHTML = history.length ? 
-            history.slice().reverse().map(h => `<div class="history-item"><span>・ ${h.date} [${h.route}]</span><button class="del-history-btn" onclick="deleteHistory('${id}', ${h.hid})">削除</button></div>`).join('') : "履歴なし";
+    async function showHistory(id) {
+    if (!window.db) return;
+    
+    const box = document.getElementById('history-box');
+    box.classList.remove('hidden');
+    document.getElementById('history-title').innerText = `${id} の履歴`;
+    
+    // Firebaseから最新10件を取得
+    const q = window.fs.query(
+        window.fs.collection(window.db, "bus_history"),
+        window.fs.where("busId", "==", id),
+        window.fs.orderBy("timestamp", "desc"),
+        window.fs.limit(10)
+    );
+
+    try {
+        const querySnapshot = await window.fs.getDocs(q);
+        let html = "";
+        querySnapshot.forEach((doc) => {
+            const h = doc.data();
+            const date = h.timestamp.toDate(); // Firebaseの時間をJSの時間に変換
+            const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
+            html += `<div class="history-item"><span>・ ${dateStr} [${h.route}]</span></div>`;
+        });
+        document.getElementById('history-content').innerHTML = html || "履歴なし";
+    } catch (e) {
+        console.error("履歴取得エラー:", e);
+        document.getElementById('history-content').innerHTML = "読み込みエラー";
     }
+}
 
     function deleteHistory(busId, hid) {
         if (!confirm('削除しますか？')) return;

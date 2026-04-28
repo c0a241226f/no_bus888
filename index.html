@@ -7,8 +7,7 @@
     <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   // Firestoreのライブラリを追加
-  import { getFirestore, collection, doc, setDoc, onSnapshot, getDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+  import { getFirestore, collection, doc, setDoc, onSnapshot, getDoc, addDoc, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
   const firebaseConfig = {
       apiKey: "AIzaSyB8jOoIZU6gw-1Ldikz6JidJmFtS4TAMjQ",
       authDomain: "original-9ae0d.firebaseapp.com",
@@ -23,7 +22,7 @@
 
   // 関数をグローバルに公開
   window.db = db;
-  window.fs = { collection, doc, setDoc, onSnapshot, getDoc, addDoc };
+  window.fs = { collection, doc, setDoc, onSnapshot, getDoc, addDoc, query, where, orderBy, limit, getDocs };
 
   // 全ての準備ができてから、リセットチェックと同期を開始
   window.addEventListener('DOMContentLoaded', () => {

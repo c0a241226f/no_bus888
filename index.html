@@ -337,24 +337,25 @@ function syncActiveBuses() {
     }
 
     async function busAction(id, type) {
-        let active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
-        
-        if (type === 'in' && !active.includes(id)) {
-            active.push(id);
-            const now = new Date();
-            // 履歴保存
-            await window.fs.addDoc(window.fs.collection(window.db, "bus_history"), {
-                busId: id,
-                route: currentRoute,
-                timestamp: now
-            });
-        } else if (type === 'out') {
-            active = active.filter(x => x !== id);
-        }
-
-        // Firebase（Firestore）を更新。これで他の人の画面も連動して動きます
-        await window.fs.setDoc(window.fs.doc(window.db, "active_buses", currentRoute), { buses: active });
+        if (!window.db) return; // Firebaseが準備できていなければ何もしない
+    
+    let active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
+    
+    if (type === 'in' && !active.includes(id)) {
+        active.push(id);
+        // 履歴をFirebaseへ保存
+        await window.fs.addDoc(window.fs.collection(window.db, "bus_history"), {
+            busId: id,
+            route: currentRoute,
+            timestamp: new Date()
+        });
+    } else if (type === 'out') {
+        active = active.filter(x => x !== id);
     }
+
+    // ★重要：ここでFirebase（Firestore）のデータを更新します
+    // これにより、Firestore側のデータが書き換わり、全員の画面へ通知が行きます
+    await window.fs.setDoc(window.fs.doc(window.db, "active_buses", currentRoute), { buses: active });}
 
     async function checkAndResetDaily() {
         const today = new Date().toLocaleDateString('ja-JP');
@@ -430,7 +431,9 @@ function syncActiveBuses() {
     
     setInterval(updateClock, 1000);
     setInterval(updateCountdowns, 1000);
-    window.addEventListener('load', () => {
+
+// Firebaseの同期を開始（window.fsが準備できてから実行）
+window.addEventListener('load', () => {
     if (typeof syncActiveBuses === 'function') {
         syncActiveBuses();
     }

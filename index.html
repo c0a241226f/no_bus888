@@ -260,8 +260,8 @@
             if (diffMs > 0) {
                 const sec = Math.floor(diffMs / 1000);
                 const min = Math.floor(sec / 60);
-                const remainderSec = String(sec % 60).padStart(2, '0'); // 秒を2桁に固定
-                return { min: min, sec: remainderSec };
+                const remainderSec = String(sec % 60).padStart(2, '0');
+                return { min: min, sec: remainderSec, time: t }; // time: t を追加
             }
         }
         return null;
@@ -271,16 +271,20 @@
         const dayType = getDayType();
         const config = schedules[currentRoute][dayType];
         
-        // シャトル判定などの既存処理...
         document.getElementById('route-card').classList.toggle('is-shuttle', isCurrentlyShuttle(config.shuttleRange));
         document.getElementById('day-label').innerText = `運行ダイヤ：${dayType === 'weekend' ? '休日' : '平日'}`;
 
-        // フォーマットを 5:01 形式に変更
-        const format = (res) => res ? `${res.min}:${res.sec}` : "終了";
+        // 修正ポイント：時刻とカウントダウンをセットで表示する
+        const format = (times) => {
+            const res = calcNext(times);
+            if (!res) return "終了";
+            // res.time には "10:30" などの発車時刻が入るように calcNext も後ほど微修正します
+            return `${res.time}発 (${res.min}:${res.sec})`;
+        };
         
-        document.getElementById('count-out').innerText = format(calcNext(config.out));
-        document.getElementById('count-in').innerText = format(calcNext(config.in));
-    }
+        document.getElementById('count-out').innerText = format(config.out);
+        document.getElementById('count-in').innerText = format(config.in);
+        }
 
     function toggleTimetable() {
         const el = document.getElementById('timetable-display');
@@ -381,27 +385,35 @@ function syncActiveBuses() {
     const box = document.getElementById('history-box');
     box.classList.remove('hidden');
     document.getElementById('history-title').innerText = `${id} の履歴`;
+    document.getElementById('history-content').innerHTML = "読み込み中...";
     
-    // Firebaseから最新10件を取得
-    const q = window.fs.query(
-        window.fs.collection(window.db, "bus_history"),
-        window.fs.where("busId", "==", id),
-        window.fs.orderBy("timestamp", "desc"),
-        window.fs.limit(10)
-    );
-
     try {
+        const q = window.fs.query(
+            window.fs.collection(window.db, "bus_history"),
+            window.fs.where("busId", "==", String(id)), // 文字列として確実に指定
+            window.fs.orderBy("timestamp", "desc"),    // ここでインデックスが必要
+            window.fs.limit(10)
+        );
+
         const querySnapshot = await window.fs.getDocs(q);
         let html = "";
-        querySnapshot.forEach((doc) => {
-            const h = doc.data();
-            const date = h.timestamp.toDate(); // Firebaseの時間をJSの時間に変換
-            const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
-            html += `<div class="history-item"><span>・ ${dateStr} [${h.route}]</span></div>`;
-        });
-        document.getElementById('history-content').innerHTML = html || "履歴なし";
+        
+        if (querySnapshot.empty) {
+            html = "履歴はありません";
+        } else {
+            querySnapshot.forEach((doc) => {
+                const h = doc.data();
+                if (h.timestamp) {
+                    const date = h.timestamp.toDate(); 
+                    const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
+                    html += `<div class="history-item"><span>・ ${dateStr} [${h.route}]</span></div>`;
+                }
+            });
+        }
+        document.getElementById('history-content').innerHTML = html;
     } catch (e) {
         console.error("履歴取得エラー:", e);
+        // ここに出るURLをクリックしてインデックスを作成してください
         document.getElementById('history-content').innerHTML = "読み込みエラー";
     }
 }

@@ -367,7 +367,7 @@ function syncActiveBuses() {
 
             if (lastResetDate !== today) {
                 // 全路線の運用状況をFirebase上で空にする
-                const routes = ['A', 'B', 'C'];
+                const routes = ['八王子駅', 'みなみ野駅', '学生会館'];
                 for (const route of routes) {
                     await window.fs.setDoc(window.fs.doc(window.db, "active_buses", route), { buses: [] });
                 }

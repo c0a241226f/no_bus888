@@ -367,7 +367,7 @@ function syncActiveBuses() {
 
             if (lastResetDate !== today) {
                 // 全路線の運用状況をFirebase上で空にする
-                const routes = ['八王子駅', 'みなみ野駅', '学生会館'];
+                const routes = ['A', 'B', 'C'];
                 for (const route of routes) {
                     await window.fs.setDoc(window.fs.doc(window.db, "active_buses", route), { buses: [] });
                 }
@@ -398,6 +398,8 @@ function syncActiveBuses() {
 
         const querySnapshot = await window.fs.getDocs(q);
         let html = "";
+
+        const routeNames = { 'A': '八王子線', 'B': 'みなみ野線', 'C': '学生会館線' };
         
         if (querySnapshot.empty) {
             html = "履歴はありません";
@@ -407,7 +409,10 @@ function syncActiveBuses() {
                 if (h.timestamp) {
                     const date = h.timestamp.toDate(); 
                     const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
-                    html += `<div class="history-item"><span>・ ${dateStr} [${h.route}]</span></div>`;
+                    
+                    // h.route (A, B, C) を routeNames を使って日本語名に変換
+                    const name = routeNames[h.route] || h.route; 
+                    html += `<div class="history-item"><span>・ ${dateStr} [${name}]</span></div>`;
                 }
             });
         }

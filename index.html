@@ -7,7 +7,7 @@
     <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   // Firestoreのライブラリを追加
-  import { getFirestore, collection, doc, setDoc, onSnapshot, getDoc, addDoc, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, doc, setDoc, onSnapshot, getDoc, addDoc, query, where, orderBy, limit, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
   const firebaseConfig = {
       apiKey: "AIzaSyB8jOoIZU6gw-1Ldikz6JidJmFtS4TAMjQ",
       authDomain: "original-9ae0d.firebaseapp.com",
@@ -22,7 +22,7 @@
 
   // 関数をグローバルに公開
   window.db = db;
-  window.fs = { collection, doc, setDoc, onSnapshot, getDoc, addDoc, query, where, orderBy, limit, getDocs };
+  window.fs = { collection, doc, setDoc, onSnapshot, getDoc, addDoc, query, where, orderBy, limit, getDocs, deleteDoc };
 
   // 全ての準備ができてから、リセットチェックと同期を開始
   window.addEventListener('DOMContentLoaded', () => {
@@ -44,7 +44,7 @@
         #live-clock { font-family: 'Courier New', monospace; font-size: 1.3rem; font-weight: bold; color: #60a5fa; }
 
         .tabs { display: flex; gap: 4px; margin-bottom: 10px; background: #e2e8f0; padding: 4px; border-radius: 10px; }
-        .tab-btn {flex: 1;padding: 10px 5px;border: none;border-radius: 7px;cursor: pointer;background: transparent; /* 背景なし */color: #64748b;font-weight: bold;transition: 0.3s;}
+        .tab-btn {flex: 1;padding: 10px 5px;border: none;border-radius: 7px;cursor: pointer;background: transparent;color: #64748b;font-weight: bold;transition: 0.3s;}
         .tab-btn.active {background: var(--primary); color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);transform: translateY(-1px);}
 
         .card { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; position: relative; transition: all 0.3s ease; }
@@ -79,13 +79,158 @@
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px dotted #ddd; }
         .del-history-btn { background: none; border: 1px solid #ccc; color: #999; font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; cursor: pointer; }
         .hidden { display: none; }
+
+        /* --- 縦型ふたつ並びマップコンテナ --- */
+        .vertical-map-container {
+            margin: 20px 0;
+            padding: 20px 10px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            min-height: 440px;
+            position: relative;
+        }
+        #vertical-track {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+            background: transparent;
+        }
+
+        /* 左レール（駅行：IN）背景線 */
+        #vertical-track::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 30%;
+            width: 4px;
+            background: #cbd5e1;
+            border-radius: 2px;
+            z-index: 1;
+        }
+        /* 右レール（大学行：OUT）背景線 */
+        #vertical-track::before {
+            display: block;
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 70%;
+            width: 4px;
+            background: #cbd5e1;
+            border-radius: 2px;
+            z-index: 1;
+        }
+
+        /* 停留所ノード（共通） */
+        .map-node {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #64748b;
+            border-radius: 50%;
+            border: 2px solid white;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+
+        /* 左ルート（駅行）ノード位置 */
+        .map-node.node-in {
+            left: 30%;
+        }
+        /* 左ルート文字位置（レールのさらに左へ逃がす） */
+        .node-label.label-in {
+            position: absolute;
+            transform: translate(-105%, -50%);
+            left: -10px;
+            white-space: nowrap;
+            font-size: 11px;
+            font-weight: bold;
+            color: #475569;
+            text-align: right;
+        }
+
+        /* 右ルート（大学行）ノード位置 */
+        .map-node.node-out {
+            left: 70%;
+        }
+        /* 右ルート文字位置（レールのさらに右へ逃がす） */
+        .node-label.label-out {
+            position: absolute;
+            transform: translate(0%, -50%);
+            left: 18px;
+            white-space: nowrap;
+            font-size: 11px;
+            font-weight: bold;
+            color: #475569;
+            text-align: left;
+        }
+
+        /* --- バスマーカー（三角形状への復元と位置微調整） --- */
+        .bus-marker {
+            position: absolute;
+            width: 0;
+            height: 0;
+            cursor: pointer;
+            z-index: 20;
+            transform: translate(-50%, -50%);
+            transition: top 0.5s linear;
+        }
+
+        /* 右レール用：大学に向かう（下向き三角 ▽）OUT */
+        .bus-marker.bus-to-univ {
+            left: 70% !important;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 14px solid var(--primary);
+        }
+
+        /* 左レール用：駅に向かう（上向き三角 △）IN */
+        .bus-marker.bus-to-station {
+            left: 30% !important;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 14px solid var(--danger);
+        }
+
+        /* タップで出る詳細時刻ラベル */
+        .bus-detail-info {
+            position: absolute;
+            background: #ffffff;
+            color: #1e293b;
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            border: 1px solid #cbd5e1;
+            z-index: 100;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        
+        /* ▽マーカー内のポップアップは右側に展開 */
+        .bus-to-univ .bus-detail-info {
+            top: -10px;
+            left: 15px;
+        }
+        
+        /* △マーカー内のポップアップは左側に展開 */
+        .bus-to-station .bus-detail-info {
+            top: -10px;
+            right: 15px;
+        }
+
+        .bus-dest-label { display: none; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <span style="font-weight: bold;">東京工科大学バス運用調査 v7</span>
+        <span style="font-weight: bold;">東京工科大学バス運用調査</span>
         <div id="live-clock">00:00:00</div>
         
         <div id="live-date" style="font-size: 0.7rem; color: #60a5fa; font-family: monospace;">0000/00/00</div>
@@ -131,6 +276,11 @@
             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; color: #64748b;">車両を選択して「IN」</div>
             <div id="master-grid" class="master-grid"></div>
         </div>
+        <div id="route-map-container" class="vertical-map-container">
+            <div id="vertical-track" class="vertical-track">
+            </div>
+        </div> 
+
     </div>
 
     <div id="detail-view" class="hidden">
@@ -153,28 +303,28 @@
 
 <script>
     const travelTimes = {
-        'A': { out: 18, in: 15 },
+        'A': { out: 18, in: 12 },
         'B': { out: 10, in: 7 },
-        'C': { out: 6,  in: 6 }
+        'C': { out: 10,  in: 10 }
     };
 
     const schedules = {
         'A': {
             weekday: { 
-                out: ["07:30", "07:40","07:45","07:50","07:55", "09:15","09:20","09:25", "09:30", "09:35", "09:40", "09:45", "09:50", "09:55", "10:00", "10:05", "10:10", "10:15", "10:20", "10:25", "10:30", "10:35", "10:40", "10:45", "10:50", "11:00", "11:10", "11:20", "11:30", "11:40", "11:50", "12:05", "12:15", "12:20", "12:25", "12:30", "12:35", "12:40", "12:45", "12:50", "13:00", "13:10", "13:20", "13:30", "13:40", "13:50", "14:00", "14:10", "14:20", "14:30", "14:40", "14:50", "15:00", "15:11","15:41", "15:51", "16:01", "16:11", "16:21", "16:31","17:41", "17:51", "18:01", "18:11", "18:21", "18:31", "18:41", "18:51", "19:21", "19:31", "19:41", "19:51", "20:01", "20:11", "20:21", "20:31", "20:41", "20:56", "21:11", "21:21", "21:26", "21:31"], 
-                in: ["07:15", "07:28","07:33","07:38","07:43","09:13", "09:18", "09:23", "09:28", "09:33", "09:38", "09:43", "09:48", "09:53", "09:58", "10:03", "10:08", "10:13", "10:18", "10:23", "10:28", "10:33", "10:38", "10:48", "10:58", "11:08", "11:18", "11:28", "11:38", "11:53", "12:03", "12:08", "12:13", "12:18", "12:23", "12:28", "12:33", "12:38", "12:48", "12:58", "13:08", "13:18", "13:28", "13:38", "13:48", "13:58", "14:08", "14:18", "14:28", "14:38", "14:48", "15:00","15:30", "15:40", "15:50", "16:00", "16:10", "16:20","17:30", "17:40", "17:50", "18:00", "18:10", "18:20", "18:30", "18:40", "19:10", "19:20", "19:30", "19:40", "19:50", "20:00", "20:10", "20:20", "20:30", "20:45", "21:00", "21:10", "21:15", "21:20"],
+                out: ["07:30", "07:40","07:45","07:50","07:55","09:15","09:20","09:25", "09:30", "09:35", "09:40", "09:45", "09:50", "09:55", "10:00", "10:05", "10:10", "10:15", "10:20", "10:25", "10:30", "10:35", "10:40", "10:45", "10:50", "11:00", "11:10", "11:20", "11:30", "11:40", "11:50", "12:05", "12:15", "12:20", "12:25", "12:30", "12:35", "12:40", "12:45", "12:50", "13:00", "13:10", "13:20", "13:30", "13:40", "13:50", "14:00", "14:10", "14:20", "14:30", "14:40", "14:50", "15:00", "15:11","15:41", "15:51", "16:01", "16:11", "16:21", "16:31", "17:51", "18:01", "18:11", "18:21", "18:31", "18:41", "18:51", "19:21", "19:31", "19:41", "19:51", "20:01", "20:11", "20:21", "20:31", "20:41", "20:56", "21:11", "21:21", "21:26", "21:31"], 
+                in: ["07:15", "07:28","07:33","07:38","07:43","09:03","09:08","09:13", "09:18", "09:23", "09:28", "09:33", "09:38", "09:43", "09:48", "09:53", "09:58", "10:03", "10:08", "10:13", "10:18", "10:23", "10:28", "10:33", "10:38", "10:48", "10:58", "11:08", "11:18", "11:28", "11:38", "11:53", "12:03", "12:08", "12:13", "12:18", "12:23", "12:28", "12:33", "12:38", "12:48", "12:58", "13:08", "13:18", "13:28", "13:38", "13:48", "13:58", "14:08", "14:18", "14:28", "14:38", "14:48", "15:00","15:30", "15:40", "15:50", "16:00", "16:10", "16:20","17:40", "17:50", "18:00", "18:10", "18:20", "18:30", "18:40", "19:10", "19:20", "19:30", "19:40", "19:50", "20:00", "20:10", "20:20", "20:30", "20:45", "21:00", "21:10", "21:15", "21:20"],
                 shuttleRange: [["07:55", "09:15"], ["15:11", "15:41"], ["16:31", "17:41"], ["18:51", "19:21"]]
             },
             weekend: { 
-                out: ["09:00", "11:00", "13:00", "15:00"], 
-                in: ["10:00", "12:00", "14:00", "16:00"], 
+                out: ["08:00","08:20","08:35","08:50","09:10","09:40","10:10", "10:45","11:45","12:10","12:40", "13:15","13:45","15:00","15:23","15:53","16:23","16:53","17:23","17:52","18:23","19:23"], 
+                in: ["07:47", "08:07","08:22","08:37","08:57", "09:27","09:57","10:32","11:32","11:57","12:27","13:02","13:32","14:47","15:10","15:40","16:10","16:40","17:10","17:40","18:10", "19:10"], 
                 shuttleRange: null
             }
         },
         'B': {
             weekday: { 
-                out: ["07:29", "07:38", "07:44", "07:52", "07:58", "08:06", "08:15", "09:25", "09:34", "09:44", "09:55", "10:00", "10:10", "10:18", "10:24", "10:30", "10:40", "10:46", "10:56", "11:03", "11:16", "11:23", "11:36", "11:43", "11:56", "12:03", "12:09", "12:16", "12:23", "12:29", "12:36", "12:43", "12:49", "12:56", "13:03", "13:16", "13:23", "13:36", "13:43", "13:56", "14:03", "14:16", "14:23", "14:36", "14:43", "14:56", "15:03", "15:09", "15:20", "15:28", "15:40", "15:51", "16:03", "16:15", "16:26", "16:36", "16:46", "17:25", "17:33", "17:43", "17:51", "18:00", "18:08", "18:16", "18:27", "18:37", "18:49", "18:59", "19:11", "19:21", "19:32", "19:43", "19:54", "20:05", "20:15", "20:25", "20:36", "20:45", "20:56", "21:07", "21:18", "21:27"], 
-                in: ["07:22", "07:31", "07:37", "07:45", "07:51", "07:59", "08:08", "09:18", "09:27", "09:37", "09:48", "09:53", "10:03", "10:11", "10:17", "10:23", "10:33", "10:39", "10:49", "10:56", "11:09", "11:16", "11:29", "11:36", "11:49", "11:56", "12:02", "12:09", "12:16", "12:22", "12:29", "12:36", "12:42", "12:49", "12:56", "13:09", "13:16", "13:29", "13:36", "13:49", "13:56", "14:09", "14:16", "14:29", "14:36", "14:49", "14:56", "15:02", "15:13", "15:21", "15:33", "15:44", "15:56", "16:08", "16:19", "16:29", "16:39", "17:18", "17:26", "17:36", "17:44", "17:53", "18:01", "18:09", "18:20", "18:30", "18:42", "18:52", "19:04", "19:14", "19:25", "19:36", "19:47", "19:58", "20:08", "20:18", "20:29", "20:38", "20:49", "21:00", "21:11", "21:20"], 
+                out: ["07:29", "07:38", "07:45", "07:53", "07:59", "08:07", "08:16", "09:22", "09:33", "09:44", "09:56", "10:01", "10:10", "10:19", "10:25", "10:30", "10:41", "10:48", "10:57", "11:03", "11:17", "11:23", "11:37", "11:44", "11:57", "12:03", "12:08", "12:13", "12:17", "12:23", "12:37", "12:44", "12:50", "12:57", "13:03", "13:17", "13:23", "13:37", "13:44", "13:57", "14:04", "14:17", "14:23", "14:37", "14:44", "14:57", "15:03", "15:09", "15:21", "15:28", "15:41", "15:51", "16:03", "16:16", "16:26", "16:36", "16:46", "17:25", "17:34", "17:43", "17:52", "18:00", "18:09", "18:17", "18:27", "18:37", "18:51", "19:00", "19:12", "19:22", "19:34", "19:43", "19:54", "20:05", "20:15", "20:25", "20:37", "20:45", "20:56", "21:07", "21:18", "21:27"], 
+                in: ["07:22", "07:31", "07:38", "07:46", "07:52", "08:00", "08:09", "09:15", "09:26", "09:37", "09:49", "09:54", "10:03", "10:12", "10:18", "10:23", "10:34", "10:41", "10:50", "10:56", "11:10", "11:16", "11:30", "11:37", "11:50", "11:56", "12:01", "12:06", "12:10", "12:16", "12:30", "12:37", "12:43", "12:50", "12:56", "13:10", "13:16", "13:30", "13:37", "13:50", "13:57", "14:10", "14:16", "14:30", "14:37", "14:50", "14:56", "15:02", "15:14", "15:21", "15:34", "15:44", "15:56", "16:09", "16:19", "16:29", "16:39", "17:18", "17:27", "17:36", "17:45", "17:53", "18:02", "18:10", "18:20", "18:30", "18:44", "18:53", "19:05", "19:15", "19:27", "19:36", "19:47", "19:58", "20:08", "20:18", "20:30", "20:38", "20:49", "21:00", "21:11", "21:20"], 
                 shuttleRange: [["08:15","09:25"],["16:46","17:25"],["18:59","19:11"]] 
             },
             weekend: { 
@@ -185,11 +335,11 @@
         },
         'C': {
             weekday: { 
-                out: ["08:14", "08:28","08:42","08:56","09:10","10:24","10:48", "17:08"], 
-                in: ["08:06", "08:22","08:36","08:50","09:04","10:18","10:42", "17:02"], 
+                out: ["08:14", "08:34","08:54","09:14","10:20","10:45", "17:10"], 
+                in: ["08:04", "08:24","08:44","09:04","10:10","10:35", "17:00"], 
                 shuttleRange: null 
             },
-            weekend: { out: ["09:00", "12:00"], in: ["10:30", "13:30"], shuttleRange: null }
+            weekend: {out:[], in: [], shuttleRange: null }
         }
     };
 
@@ -200,7 +350,7 @@
         { id: '181', type: '日野ブルーリボン', note: '' }, { id: '182', type: '日野ブルーリボン', note: '' },
         { id: '183', type: '日野ブルーリボン', note: '' }, { id: '315', type: '三菱ふそう エアロスター', note: '' },
         { id: '337', type: '三菱ふそう エアロスター', note: '' }, { id: '338', type: '三菱ふそう エアロスター', note: '' },
-        { id: '339', type: '日野ブルーリボン', note: '' }, { id: '374', type: 'いすゞエルガ', note: '' },
+        { id: '339', type: '三菱ふそう エアロスター', note: '' }, { id: '374', type: 'いすゞエルガ', note: '' },
         { id: '375', type: 'いすゞエルガ', note: '' }, { id: '387', type: 'いすゞエルガ', note: '' },
         { id: '388', type: 'いすゞエルガ', note: '' }, 
         { id: '398', type: '三菱ふそう エアロスター ', note: '' }, { id: '399', type: '三菱ふそう エアロスター', note: '' },
@@ -211,11 +361,66 @@
         { id: '455', type: 'トヨタ・SORA', note: '' }, { id: '465', type: 'トヨタ・SORA', note: '' }
     ];
 
+    const mapConfig = {
+    'A': {
+        name: "八王子線",
+        nodesOut: [
+            { pos: 0, label: "八王子駅(発)" },
+            { pos: 15, label: "子安町三丁目" },
+            { pos: 45, label: "京王片倉" },
+            { pos: 75, label: "片倉高校前" },
+            { pos: 100, label: "大学キャンパス(発)" }
+        ],
+        nodesIn: [
+            { pos: 0, label: "八王子駅(着)" },
+            { pos: 15, label: "子安町三丁目" },
+            { pos: 45, label: "京王片倉" },
+            { pos: 75, label: "片倉高校前" },
+            { pos: 100, label: "大学キャンパス(着)" }
+        ]
+    },
+    'B': {
+        name: "みなみ野線",
+        // 左側：駅行き（上：駅、中：片倉高校前、下：大学）
+        nodesIn: [
+            { pos: 0, label: "みなみ野駅(着)" },
+            { pos: 32, label: "八王子南郵便局前" },
+            { pos: 64, label: "片倉高校前" },
+            { pos: 100, label: "大学キャンパス(発)" }
+        ],
+        // 右側：大学行き（上：みなみ野駅、中：兵衛中央、下：大学）
+        nodesOut: [
+            { pos: 0, label: "みなみ野駅(発)" },
+            { pos: 34, label:"宇津貫公園入口"},
+            { pos: 64, label: "兵衛中央" },
+            { pos: 100, label: "大学キャンパス(着)" }
+        ]
+    },
+    'C': {
+        name: "学生会館線",
+        nodesOut: [
+            { pos: 0, label: "学生会館(発)" },
+            { pos: 25, label: "八王子南郵便局前" },
+            { pos: 75, label: "片倉高校前" },
+            { pos: 100, label: "大学キャンパス(着)" }
+        ],
+        nodesIn: [
+            { pos: 0, label: "学生会館(着)" },
+            { pos: 25, label: "八王子南郵便局前" },
+            { pos: 75, label: "片倉高校前" },
+            { pos: 100, label: "大学キャンパス(発)" }
+        ]
+    }
+};
+
     let currentRoute = 'A';
 
     function getDayType() {
-        const day = new Date().getDay();
-        return (day === 0 || day === 6) ? 'weekend' : 'weekday';
+        const now = new Date();
+        const day = now.getDay();
+        if (day === 0) return 'sunday'; // 日曜日を追加
+        if (day === 6) return 'weekend'; // 土曜日
+        return 'weekday'; // 平手
     }
 
     // 修正：複数の時間帯に対応したシャトル判定
@@ -269,6 +474,13 @@
 
     function updateCountdowns() {
         const dayType = getDayType();
+        if (dayType === 'sunday') {
+            document.getElementById('day-label').innerText = `運行ダイヤ：日曜（運休）`;
+            document.getElementById('count-out').innerText = "運休";
+            document.getElementById('count-in').innerText = "運休";
+            return;
+        }
+
         const config = schedules[currentRoute][dayType];
         
         document.getElementById('route-card').classList.toggle('is-shuttle', isCurrentlyShuttle(config.shuttleRange));
@@ -309,6 +521,120 @@
             fill('list-in', config.in, tTime.in);
         }
     }
+    
+    function updateVerticalMap() {
+    const route = currentRoute;
+    const config = mapConfig[route];
+    const track = document.getElementById('vertical-track');
+    if (!track) return;
+
+    // 前回の環状クラスが残っていたら削除
+    track.classList.remove('loop-track');
+
+    const dayType = getDayType();
+    
+    // --- ① 左右それぞれの経由地（ノード）を独立して描画 ---
+    // 左側（IN: 駅行きルート）のノード
+    let html = config.nodesIn.map(node => `
+        <div class="map-node node-in" style="top: ${node.pos}%">
+            <span class="node-label label-in">${node.label}</span>
+        </div>
+    `).join('');
+
+    // 右側（OUT: 大学行きルート）のノード
+    html += config.nodesOut.map(node => `
+        <div class="map-node node-out" style="top: ${node.pos}%">
+            <span class="node-label label-out">${node.label}</span>
+        </div>
+    `).join('');
+
+    // 日曜日はノードのみ表示して終了
+    if (dayType === 'sunday') {
+        track.innerHTML = html;
+        return;
+    }
+
+    const sched = schedules[route][dayType];
+    if (!sched || !sched.out || !sched.in) {
+        track.innerHTML = html;
+        return;
+    }
+
+    const now = new Date();
+    const nowTotal = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
+
+    // --- ② 右側：大学行き（OUT: 上[0%] ➔ 下[100%] へ↓向きに進む） ---
+    const outTime = travelTimes[route].out;
+    const runningOutTimes = sched.out.filter(t => {
+        const [h, m] = t.split(':').map(Number);
+        const departureTotal = h * 60 + m;
+        return departureTotal <= nowTotal && nowTotal <= (departureTotal + outTime);
+    });
+
+    runningOutTimes.forEach((lastOut) => {
+        const [h, m] = lastOut.split(':').map(Number);
+        const elapsed = nowTotal - (h * 60 + m);
+        
+        // 進捗率（0%：駅発 ➔ 100%：大学着）
+        const percent = (elapsed / outTime) * 100;
+        
+        const arrTime = new Date(); arrTime.setHours(h, m + outTime);
+        const arrStr = `${arrTime.getHours()}:${String(arrTime.getMinutes()).padStart(2,'0')}`;
+        const isVisible = (visibleDetailId === "out_" + lastOut) ? "" : "hidden";
+        
+        // 右側のライン（line-out）に沿って配置
+        html += `
+            <div class="bus-marker bus-to-univ" style="top: ${percent}%" onclick="toggleBusDetail('out_${lastOut}')">
+                <div class="bus-detail-info ${isVisible}">大学行 ${lastOut}⇒${arrStr}</div>
+            </div>`;
+    });
+
+
+    // --- ③ 左側：駅行き（IN: 下[100%] ➔ 上[0%] へ↑向きに進む） ---
+    const inTime = travelTimes[route].in;
+    const runningInTimes = sched.in.filter(t => {
+        const [h, m] = t.split(':').map(Number);
+        const departureTotal = h * 60 + m;
+        return departureTotal <= nowTotal && nowTotal <= (departureTotal + inTime);
+    });
+
+    runningInTimes.forEach((lastIn) => {
+        const [h, m] = lastIn.split(':').map(Number);
+        const elapsed = nowTotal - (h * 60 + m);
+        
+        // 進捗率（100%：大学発 ➔ 0%：駅着）
+        const percent = 100 - ((elapsed / inTime) * 100);
+        
+        const arrTime = new Date(); arrTime.setHours(h, m + inTime);
+        const arrStr = `${arrTime.getHours()}:${String(arrTime.getMinutes()).padStart(2,'0')}`;
+        const isVisible = (visibleDetailId === "in_" + lastIn) ? "" : "hidden";
+
+        // 左側のライン（line-in）に沿って配置
+        html += `
+            <div class="bus-marker bus-to-station" style="top: ${percent}%" onclick="toggleBusDetail('in_${lastIn}')">
+                <div class="bus-detail-info ${isVisible}">駅・会館行 ${lastIn}⇒${arrStr}</div>
+            </div>`;
+    });
+
+    track.innerHTML = html;
+}
+
+let visibleDetailId = null;
+
+// 詳細表示を切り替える関数
+function toggleBusDetail(uniqueId) {
+    // 同じものをタップしたら消す、違うものならそっちを表示
+    if (visibleDetailId === uniqueId) {
+        visibleDetailId = null;
+    } else {
+        visibleDetailId = uniqueId;
+    }
+    // 即座に描画に反映
+    updateVerticalMap();
+}
+
+
+    
 
     function renderAll() {
     // Firebaseから同期された最新のリストをLocalStorage経由で取得
@@ -322,6 +648,7 @@
     `).join('') || '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.8rem;">現在運用なし</div>';
     
     updateCountdowns();
+    updateVerticalMap();
 }
 
 function syncActiveBuses() {
@@ -409,10 +736,14 @@ function syncActiveBuses() {
                 if (h.timestamp) {
                     const date = h.timestamp.toDate(); 
                     const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
-                    
-                    // h.route (A, B, C) を routeNames を使って日本語名に変換
                     const name = routeNames[h.route] || h.route; 
-                    html += `<div class="history-item"><span>・ ${dateStr} [${name}]</span></div>`;
+                    
+                    // doc.id (FirestoreのドキュメントID) を引数に渡して、削除ボタンを設置
+                    html += `
+                        <div class="history-item">
+                            <span>・ ${dateStr} [${name}]</span>
+                            <button class="del-history-btn" onclick="deleteHistory('${id}', '${doc.id}')">削除</button>
+                        </div>`;
                 }
             });
         }
@@ -424,11 +755,21 @@ function syncActiveBuses() {
     }
 }
 
-    function deleteHistory(busId, hid) {
+    async function deleteHistory(busId, hid) {
         if (!confirm('削除しますか？')) return;
-        let history = JSON.parse(localStorage.getItem(`history_${busId}`)) || [];
-        localStorage.setItem(`history_${busId}`, JSON.stringify(history.filter(h => h.hid !== hid)));
+        
+        try {
+        // Firebase(Firestore)上の該当ドキュメントを直接削除
+        const docRef = window.fs.doc(window.db, "bus_history", hid);
+        await window.fs.deleteDoc(docRef);
+        
+        console.log("履歴を削除しました");
+        // 削除が完了したら、再度履歴を読み込んで画面を更新
         showHistory(busId);
+    } catch (e) {
+        console.error("履歴の削除に失敗しました:", e);
+        alert("削除に失敗しました。セッションか権限を確認してください。");
+    }
     }
 
     document.getElementById('master-grid').innerHTML = busMaster.map(b => `<div class="in-btn" onclick="busAction('${b.id}', 'in')">${b.id}</div>`).join('');
@@ -436,6 +777,8 @@ function syncActiveBuses() {
     
     setInterval(updateClock, 1000);
     setInterval(updateCountdowns, 1000);
+
+    setInterval(updateVerticalMap, 1000);
 
 // Firebaseの同期を開始（window.fsが準備できてから実行）
 window.addEventListener('load', () => {

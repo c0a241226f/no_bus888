@@ -1,85 +1,317 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bus Dispatcher</title>
     <link rel="icon" type="image/png" href="./homeicon/421_gakubus.png">
     <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  // Firestoreのライブラリを追加
-  import { getFirestore, collection, doc, setDoc, onSnapshot, getDoc, addDoc, query, where, orderBy, limit, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-  const firebaseConfig = {
-      apiKey: "AIzaSyB8jOoIZU6gw-1Ldikz6JidJmFtS4TAMjQ",
-      authDomain: "original-9ae0d.firebaseapp.com",
-      projectId: "original-9ae0d",
-      storageBucket: "original-9ae0d.firebasestorage.app",
-      messagingSenderId: "522437553129",
-      appId: "1:522437553129:web:0c827d47ac01b3084bb978"
-  };
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        // Firestoreのライブラリを追加
+        import { getFirestore, collection, doc, setDoc, onSnapshot, getDoc, addDoc, query, where, orderBy, limit, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        const firebaseConfig = {
+            apiKey: "AIzaSyB8jOoIZU6gw-1Ldikz6JidJmFtS4TAMjQ",
+            authDomain: "original-9ae0d.firebaseapp.com",
+            projectId: "original-9ae0d",
+            storageBucket: "original-9ae0d.firebasestorage.app",
+            messagingSenderId: "522437553129",
+            appId: "1:522437553129:web:0c827d47ac01b3084bb978"
+        };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app); // データベースを初期化
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app); // データベースを初期化
 
-  // 関数をグローバルに公開
-  window.db = db;
-  window.fs = { collection, doc, setDoc, onSnapshot, getDoc, addDoc, query, where, orderBy, limit, getDocs, deleteDoc };
+        // 関数をグローバルに公開
+        window.db = db;
+        window.fs = { collection, doc, setDoc, onSnapshot, getDoc, addDoc, query, where, orderBy, limit, getDocs, deleteDoc };
 
-  // 全ての準備ができてから、リセットチェックと同期を開始
-  window.addEventListener('DOMContentLoaded', () => {
-      if (typeof checkAndResetDaily === 'function') checkAndResetDaily();
-      if (typeof syncActiveBuses === 'function') syncActiveBuses();
-  });
-</script>
+        // 全ての準備ができてから、リセットチェックと同期を開始
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof checkAndResetDaily === 'function') checkAndResetDaily();
+            if (typeof syncActiveBuses === 'function') syncActiveBuses();
+        });
+    </script>
 
 
     <style>
         :root {
-            --primary: #2563eb; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; 
-            --accent: #0f172a; --danger: #ef4444; --warning: #f59e0b; --shuttle: #8e5eff;
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --accent: #0f172a;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --shuttle: #8e5eff;
         }
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 10px; }
-        .container { max-width: 650px; margin: 0 auto; }
-        
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: var(--accent); color: white; padding: 10px 15px; border-radius: 12px; }
-        #live-clock { font-family: 'Courier New', monospace; font-size: 1.3rem; font-weight: bold; color: #60a5fa; }
 
-        .tabs { display: flex; gap: 4px; margin-bottom: 10px; background: #e2e8f0; padding: 4px; border-radius: 10px; }
-        .tab-btn {flex: 1;padding: 10px 5px;border: none;border-radius: 7px;cursor: pointer;background: transparent;color: #64748b;font-weight: bold;transition: 0.3s;}
-        .tab-btn.active {background: var(--primary); color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);transform: translateY(-1px);}
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 10px;
+        }
 
-        .card { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; position: relative; transition: all 0.3s ease; }
-        
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            background: var(--accent);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 12px;
+        }
+
+        #live-clock {
+            font-family: 'Courier New', monospace;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 10px;
+            background: #e2e8f0;
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 5px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            background: transparent;
+            color: #64748b;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .card {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
         /* シャトル表示用 */
-        .shuttle-badge { display: none; position: absolute; top: 10px; right: 15px; background: var(--shuttle); color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; font-weight: bold; animation: pulse 2s infinite; }
-        .is-shuttle .shuttle-badge { display: block; }
-        .is-shuttle { border: 2px solid var(--shuttle); background: #fdfaff; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        .shuttle-badge {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: var(--shuttle);
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
 
-        .day-type-label { font-size: 0.75rem; font-weight: bold; color: #64748b; margin-bottom: 5px; }
-        .direction-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
-        .dir-box { background: #f1f5f9; padding: 10px; border-radius: 10px; text-align: center; }
-        .dir-label { font-size: 0.7rem; color: #64748b; font-weight: bold; margin-bottom: 5px; }
-        .dir-time { font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; color: var(--danger); }
+        .is-shuttle .shuttle-badge {
+            display: block;
+        }
 
-        .view-timetable-btn { width: 100%; padding: 10px; margin-top: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        #timetable-display { margin-top: 15px; border-top: 2px solid #eee; padding-top: 15px; }
-        .timetable-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .timetable-col h4 { margin: 0 0 10px 0; font-size: 0.8rem; background: #eee; padding: 4px; text-align: center; border-radius: 4px; }
-        .time-row { font-family: monospace; font-size: 0.9rem; padding: 4px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; }
+        .is-shuttle {
+            border: 2px solid var(--shuttle);
+            background: #fdfaff;
+        }
 
-        .in-bus-card { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 15px; border-radius: 10px; border: 1px solid #e2e8f0; border-left: 5px solid var(--primary); margin-bottom: 5px; }
-        .out-btn { background: #fee2e2; color: var(--danger); border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: bold; }
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
 
-        .master-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-        .in-btn { background: #fff; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-weight: bold; box-shadow: 0 2px 0 #cbd5e1; }
-        
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; }
-        .clickable-id { color: var(--primary); text-decoration: underline; cursor: pointer; font-weight: bold; }
-        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px dotted #ddd; }
-        .del-history-btn { background: none; border: 1px solid #ccc; color: #999; font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; cursor: pointer; }
-        .hidden { display: none; }
+            50% {
+                opacity: 0.6;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .day-type-label {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .direction-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .dir-box {
+            background: #f1f5f9;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .dir-label {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .dir-time {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--danger);
+        }
+
+        .view-timetable-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #timetable-display {
+            margin-top: 15px;
+            border-top: 2px solid #eee;
+            padding-top: 15px;
+        }
+
+        .timetable-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .timetable-col h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.8rem;
+            background: #eee;
+            padding: 4px;
+            text-align: center;
+            border-radius: 4px;
+        }
+
+        .time-row {
+            font-family: monospace;
+            font-size: 0.9rem;
+            padding: 4px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .in-bus-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .out-btn {
+            background: #fee2e2;
+            color: var(--danger);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .master-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .in-btn {
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 2px 0 #cbd5e1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid #eee;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .clickable-id {
+            color: var(--primary);
+            text-decoration: underline;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            border-bottom: 1px dotted #ddd;
+        }
+
+        .del-history-btn {
+            background: none;
+            border: 1px solid #ccc;
+            color: #999;
+            font-size: 0.65rem;
+            padding: 1px 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none;
+        }
 
         /* --- 縦型ふたつ並びマップコンテナ --- */
         .vertical-map-container {
@@ -91,6 +323,7 @@
             min-height: 440px;
             position: relative;
         }
+
         #vertical-track {
             position: relative;
             height: 400px;
@@ -110,6 +343,7 @@
             border-radius: 2px;
             z-index: 1;
         }
+
         /* 右レール（大学行：OUT）背景線 */
         #vertical-track::before {
             display: block;
@@ -140,6 +374,7 @@
         .map-node.node-in {
             left: 30%;
         }
+
         /* 左ルート文字位置（レールのさらに左へ逃がす） */
         .node-label.label-in {
             position: absolute;
@@ -156,6 +391,7 @@
         .map-node.node-out {
             left: 70%;
         }
+
         /* 右ルート文字位置（レールのさらに右へ逃がす） */
         .node-label.label-out {
             position: absolute;
@@ -204,595 +440,962 @@
             border-radius: 6px;
             font-size: 11px;
             font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
             border: 1px solid #cbd5e1;
             z-index: 100;
             pointer-events: none;
             white-space: nowrap;
         }
-        
+
         /* ▽マーカー内のポップアップは右側に展開 */
         .bus-to-univ .bus-detail-info {
             top: -10px;
             left: 15px;
         }
-        
+
         /* △マーカー内のポップアップは左側に展開 */
         .bus-to-station .bus-detail-info {
             top: -10px;
             right: 15px;
         }
 
-        .bus-dest-label { display: none; }
-        .hidden { display: none; }
+        /* 投稿後カード内の車両画像 */
+        .bus-card-thumb {
+            width: 40px;
+            height: 30px;
+            object-fit: cover;
+            /* 縦横比を維持して枠に収める */
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+        }
+
+        /* 編成一覧テーブル内の車両画像 */
+        .table-bus-thumb {
+            width: 32px;
+            height: 24px;
+            object-fit: cover;
+            border-radius: 3px;
+            border: 1px solid #cbd5e1;
+        }
+
+
+
+        .bus-dest-label {
+            display: none;
+        }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
+
 <body>
 
-<div class="container">
-    <div class="header">
-        <span style="font-weight: bold;">東京工科大学バス運用調査</span>
-        <div id="live-clock">00:00:00</div>
-        
-        <div id="live-date" style="font-size: 0.7rem; color: #60a5fa; font-family: monospace;">0000/00/00</div>
-    </div>
+    <div class="container">
+        <div class="header">
+            <span style="font-weight: bold;">東京工科大学バス運用調査</span>
+            <div id="live-clock">00:00:00</div>
 
-    <div class="tabs">
-    <button id="tab-A" class="tab-btn active" onclick="switchTab('A')">八王子線</button>
-    <button id="tab-B" class="tab-btn" onclick="switchTab('B')">みなみ野線</button>
-    <button id="tab-C" class="tab-btn" onclick="switchTab('C')">学生会館線</button>
-    <button id="tab-Detail" class="tab-btn detail-tab" onclick="switchTab('Detail')">編成/履歴</button>
-</div>
+            <div id="live-date" style="font-size: 0.7rem; color: #60a5fa; font-family: monospace;">0000/00/00</div>
+        </div>
 
-    <div id="main-view">
-        <div id="route-card" class="card">
-            <div id="shuttle-indicator" class="shuttle-badge">SHUTTLE MODE</div>
-            <div id="day-label" class="day-type-label">ダイヤ：読み込み中...</div>
-            
-            <div class="direction-container">
-                <div class="dir-box">
-                    <div class="dir-label">▶ キャンパス行</div>
-                    <div id="count-out" class="dir-time">--:--</div>
+        <div class="tabs">
+            <button id="tab-A" class="tab-btn active" onclick="switchTab('A')">八王子線</button>
+            <button id="tab-B" class="tab-btn" onclick="switchTab('B')">みなみ野線</button>
+            <button id="tab-C" class="tab-btn" onclick="switchTab('C')">学生会館線</button>
+            <button id="tab-Detail" class="tab-btn detail-tab" onclick="switchTab('Detail')">編成/履歴</button>
+
+            <button id="tab-Record" class="tab-btn" onclick="switchTab('Record')">乗車記録</button>
+        </div>
+
+        <div id="main-view">
+            <div id="route-card" class="card">
+                <div id="shuttle-indicator" class="shuttle-badge">SHUTTLE MODE</div>
+                <div id="day-label" class="day-type-label">ダイヤ：読み込み中...</div>
+
+                <div class="direction-container">
+                    <div class="dir-box">
+                        <div class="dir-label">▶ キャンパス行</div>
+                        <div id="count-out" class="dir-time">--:--</div>
+                    </div>
+                    <div class="dir-box">
+                        <div class="dir-label">◀ 駅・会館行</div>
+                        <div id="count-in" class="dir-time">--:--</div>
+                    </div>
                 </div>
-                <div class="dir-box">
-                    <div class="dir-label">◀ 駅・会館行</div>
-                    <div id="count-in" class="dir-time">--:--</div>
+
+                <button class="view-timetable-btn" onclick="toggleTimetable()">本日の時刻表を表示</button>
+
+                <div id="timetable-display" class="hidden">
+                    <div id="shuttle-info"
+                        style="font-size: 0.75rem; color: var(--shuttle); margin-bottom: 10px; font-weight: bold;">
+                    </div>
+                    <div class="timetable-grid">
+                        <div class="timetable-col">
+                            <h4>キャンパス行</h4>
+                            <div id="list-out" class="time-list-vertical"></div>
+                        </div>
+                        <div class="timetable-col">
+                            <h4>駅・会館行</h4>
+                            <div id="list-in" class="time-list-vertical"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <button class="view-timetable-btn" onclick="toggleTimetable()">本日の時刻表を表示</button>
-            
-            <div id="timetable-display" class="hidden">
-                <div id="shuttle-info" style="font-size: 0.75rem; color: var(--shuttle); margin-bottom: 10px; font-weight: bold;"></div>
-                <div class="timetable-grid">
-                    <div class="timetable-col"><h4>キャンパス行</h4><div id="list-out" class="time-list-vertical"></div></div>
-                    <div class="timetable-col"><h4>駅・会館行</h4><div id="list-in" class="time-list-vertical"></div></div>
+            <div id="op-list" style="margin-bottom: 15px;"></div>
+
+            <div class="card">
+                <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; color: #64748b;">車両を選択して「IN」
+                </div>
+                <div id="master-grid" class="master-grid"></div>
+            </div>
+            <div id="route-map-container" class="vertical-map-container">
+                <div id="vertical-track" class="vertical-track">
+                </div>
+            </div>
+
+        </div>
+
+        <div id="detail-view" class="hidden">
+            <div class="card">
+                <h3 style="margin-top:0;">編成一覧</h3>
+                <table id="detail-table">
+                    <thead>
+                        <tr>
+                            <th>編成ID</th>
+                            <th>型式</th>
+                            <th>特徴</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="history-box" class="hidden"
+                    style="margin-top:15px; border: 1px dashed #ccc; padding: 10px; border-radius: 8px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h4 id="history-title" style="margin:0;"></h4>
+                        <button onclick="document.getElementById('history-box').classList.add('hidden')"
+                            style="font-size: 0.7rem; cursor: pointer;">閉じる</button>
+                    </div>
+                    <div id="history-content" style="font-size:0.8rem; line-height: 1.5;"></div>
                 </div>
             </div>
         </div>
 
-        <div id="op-list" style="margin-bottom: 15px;"></div>
-
-        <div class="card">
-            <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; color: #64748b;">車両を選択して「IN」</div>
-            <div id="master-grid" class="master-grid"></div>
-        </div>
-        <div id="route-map-container" class="vertical-map-container">
-            <div id="vertical-track" class="vertical-track">
-            </div>
-        </div> 
-
-    </div>
-
-    <div id="detail-view" class="hidden">
-        <div class="card">
-            <h3 style="margin-top:0;">編成一覧</h3>
-            <table id="detail-table">
-                <thead><tr><th>編成ID</th><th>型式</th><th>特徴</th></tr></thead>
-                <tbody></tbody>
-            </table>
-            <div id="history-box" class="hidden" style="margin-top:15px; border: 1px dashed #ccc; padding: 10px; border-radius: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <h4 id="history-title" style="margin:0;"></h4>
-                    <button onclick="document.getElementById('history-box').classList.add('hidden')" style="font-size: 0.7rem; cursor: pointer;">閉じる</button>
+        <div id="record-view" class="hidden">
+            <div class="card">
+                <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; color: #64748b;">
+                    乗車した車両を選択して記録を追加：
                 </div>
-                <div id="history-content" style="font-size:0.8rem; line-height: 1.5;"></div>
+                <div id="record-master-grid" class="master-grid">
+                </div>
+            </div>
+            <div class="card">
+                <h3 style="margin-top:0;">My乗車バスランキング</h3>
+                <p style="font-size: 0.8rem; color: #64748b; margin-top: -5px;">あなたがこれまでに乗車した車両の回数ランキングです。（ローカル環境）</p>
+                <table id="ranking-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">順位</th>
+                            <th style="width: 40%;">車両番号</th>
+                            <th style="width: 40%;">乗車回数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- ここに JavaScript でランキングが挿入されます -->
+                    </tbody>
+                </table>
+                <button onclick="clearRecord()"
+                    style="margin-top: 15px; background: #fee2e2; color: var(--danger); border: none; padding: 8px; border-radius: 6px; width: 100%; font-weight: bold; cursor: pointer;">記録をすべてリセット</button>
+            </div>
+            <div class="card">
+                <h3 style="margin-top:0;">📅 最近の乗車履歴</h3>
+                <div id="my-history-content"
+                    style="font-size:0.85rem; line-height: 1.6; max-height: 250px; overflow-y: auto;">
+                    <!-- ここに JavaScript で履歴が挿入されます -->
+                </div>
             </div>
         </div>
+
+
     </div>
-</div>
 
-<script>
-    const travelTimes = {
-        'A': { out: 18, in: 12 },
-        'B': { out: 10, in: 7 },
-        'C': { out: 10,  in: 10 }
-    };
-
-    const schedules = {
-        'A': {
-            weekday: { 
-                out: ["07:30", "07:40","07:45","07:50","07:55","09:15","09:20","09:25", "09:30", "09:35", "09:40", "09:45", "09:50", "09:55", "10:00", "10:05", "10:10", "10:15", "10:20", "10:25", "10:30", "10:35", "10:40", "10:45", "10:50", "11:00", "11:10", "11:20", "11:30", "11:40", "11:50", "12:05", "12:15", "12:20", "12:25", "12:30", "12:35", "12:40", "12:45", "12:50", "13:00", "13:10", "13:20", "13:30", "13:40", "13:50", "14:00", "14:10", "14:20", "14:30", "14:40", "14:50", "15:00", "15:11","15:41", "15:51", "16:01", "16:11", "16:21", "16:31", "17:51", "18:01", "18:11", "18:21", "18:31", "18:41", "18:51", "19:21", "19:31", "19:41", "19:51", "20:01", "20:11", "20:21", "20:31", "20:41", "20:56", "21:11", "21:21", "21:26", "21:31"], 
-                in: ["07:15", "07:28","07:33","07:38","07:43","09:03","09:08","09:13", "09:18", "09:23", "09:28", "09:33", "09:38", "09:43", "09:48", "09:53", "09:58", "10:03", "10:08", "10:13", "10:18", "10:23", "10:28", "10:33", "10:38", "10:48", "10:58", "11:08", "11:18", "11:28", "11:38", "11:53", "12:03", "12:08", "12:13", "12:18", "12:23", "12:28", "12:33", "12:38", "12:48", "12:58", "13:08", "13:18", "13:28", "13:38", "13:48", "13:58", "14:08", "14:18", "14:28", "14:38", "14:48", "15:00","15:30", "15:40", "15:50", "16:00", "16:10", "16:20","17:40", "17:50", "18:00", "18:10", "18:20", "18:30", "18:40", "19:10", "19:20", "19:30", "19:40", "19:50", "20:00", "20:10", "20:20", "20:30", "20:45", "21:00", "21:10", "21:15", "21:20"],
-                shuttleRange: [["07:55", "09:15"], ["15:11", "15:41"], ["16:31", "17:41"], ["18:51", "19:21"]]
-            },
-            weekend: { 
-                out: ["08:00","08:20","08:35","08:50","09:10","09:40","10:10", "10:45","11:45","12:10","12:40", "13:15","13:45","15:00","15:23","15:53","16:23","16:53","17:23","17:52","18:23","19:23"], 
-                in: ["07:47", "08:07","08:22","08:37","08:57", "09:27","09:57","10:32","11:32","11:57","12:27","13:02","13:32","14:47","15:10","15:40","16:10","16:40","17:10","17:40","18:10", "19:10"], 
-                shuttleRange: null
-            }
-        },
-        'B': {
-            weekday: { 
-                out: ["07:29", "07:38", "07:45", "07:53", "07:59", "08:07", "08:16", "09:22", "09:33", "09:44", "09:56", "10:01", "10:10", "10:19", "10:25", "10:30", "10:41", "10:48", "10:57", "11:03", "11:17", "11:23", "11:37", "11:44", "11:57", "12:03", "12:08", "12:13", "12:17", "12:23", "12:37", "12:44", "12:50", "12:57", "13:03", "13:17", "13:23", "13:37", "13:44", "13:57", "14:04", "14:17", "14:23", "14:37", "14:44", "14:57", "15:03", "15:09", "15:21", "15:28", "15:41", "15:51", "16:03", "16:16", "16:26", "16:36", "16:46", "17:25", "17:34", "17:43", "17:52", "18:00", "18:09", "18:17", "18:27", "18:37", "18:51", "19:00", "19:12", "19:22", "19:34", "19:43", "19:54", "20:05", "20:15", "20:25", "20:37", "20:45", "20:56", "21:07", "21:18", "21:27"], 
-                in: ["07:22", "07:31", "07:38", "07:46", "07:52", "08:00", "08:09", "09:15", "09:26", "09:37", "09:49", "09:54", "10:03", "10:12", "10:18", "10:23", "10:34", "10:41", "10:50", "10:56", "11:10", "11:16", "11:30", "11:37", "11:50", "11:56", "12:01", "12:06", "12:10", "12:16", "12:30", "12:37", "12:43", "12:50", "12:56", "13:10", "13:16", "13:30", "13:37", "13:50", "13:57", "14:10", "14:16", "14:30", "14:37", "14:50", "14:56", "15:02", "15:14", "15:21", "15:34", "15:44", "15:56", "16:09", "16:19", "16:29", "16:39", "17:18", "17:27", "17:36", "17:45", "17:53", "18:02", "18:10", "18:20", "18:30", "18:44", "18:53", "19:05", "19:15", "19:27", "19:36", "19:47", "19:58", "20:08", "20:18", "20:30", "20:38", "20:49", "21:00", "21:11", "21:20"], 
-                shuttleRange: [["08:15","09:25"],["16:46","17:25"],["18:59","19:11"]] 
-            },
-            weekend: { 
-                out: ["08:16","08:44","09:11","09:34", "10:25","11:36","12:36","13:16","14:16","15:29","16:29","17:20","17:49","18:20","19:14"], 
-                in: ["08:08", "08:36","09:03","09:26","10:17","11:28","12:28","13:08","14:08","15:21","16:21","17:12","17:41","18:12", "19:06"], 
-                shuttleRange: null 
-            }
-        },
-        'C': {
-            weekday: { 
-                out: ["08:14", "08:34","08:54","09:14","10:20","10:45", "17:10"], 
-                in: ["08:04", "08:24","08:44","09:04","10:10","10:35", "17:00"], 
-                shuttleRange: null 
-            },
-            weekend: {out:[], in: [], shuttleRange: null }
-        }
-    };
-
-    const busMaster = [
-        { id: '37', type: '三菱ふそう エアロスター', note: '運用離脱' }, { id: '38', type: '三菱ふそう エアロスター', note: '運用離脱' },
-        { id: '96', type: '三菱ふそう エアロスター', note: '' }, { id: '97', type: '三菱ふそう エアロスター', note: '' },
-        { id: '98', type: '三菱ふそう エアロスター', note: '' }, { id: '100', type: '三菱ふそう エアロスター', note: '' },
-        { id: '181', type: '日野ブルーリボン', note: '' }, { id: '182', type: '日野ブルーリボン', note: '' },
-        { id: '183', type: '日野ブルーリボン', note: '' }, { id: '315', type: '三菱ふそう エアロスター', note: '' },
-        { id: '337', type: '三菱ふそう エアロスター', note: '' }, { id: '338', type: '三菱ふそう エアロスター', note: '' },
-        { id: '339', type: '三菱ふそう エアロスター', note: '' }, { id: '374', type: 'いすゞエルガ', note: '' },
-        { id: '375', type: 'いすゞエルガ', note: '' }, { id: '387', type: 'いすゞエルガ', note: '' },
-        { id: '388', type: 'いすゞエルガ', note: '' }, 
-        { id: '398', type: '三菱ふそう エアロスター ', note: '' }, { id: '399', type: '三菱ふそう エアロスター', note: '' },
-        { id: '411', type: 'いすゞエルガ', note: '' }, { id: '412', type: '三菱ふそう エアロスター', note: '' },
-        { id: '413', type: '三菱ふそう エアロスター', note: '' }, { id: '416', type: '三菱ふそう エアロスター', note: '' },
-        { id: '417', type: '三菱ふそう エアロスター', note: '' }, { id: '418', type: '三菱ふそう エアロスター', note: '' },
-        { id: '421', type: 'いすゞエルガ', note: '' }, { id: '454', type: 'トヨタ・SORA', note: '' },
-        { id: '455', type: 'トヨタ・SORA', note: '' }, { id: '465', type: 'トヨタ・SORA', note: '' }
-    ];
-
-    const mapConfig = {
-    'A': {
-        name: "八王子線",
-        nodesOut: [
-            { pos: 0, label: "八王子駅(発)" },
-            { pos: 15, label: "子安町三丁目" },
-            { pos: 45, label: "京王片倉" },
-            { pos: 75, label: "片倉高校前" },
-            { pos: 100, label: "大学キャンパス(着)" }
-        ],
-        nodesIn: [
-            { pos: 0, label: "八王子駅(着)" },
-            { pos: 15, label: "子安町三丁目" },
-            { pos: 45, label: "京王片倉" },
-            { pos: 75, label: "片倉高校前" },
-            { pos: 100, label: "大学キャンパス(発)" }
-        ]
-    },
-    'B': {
-        name: "みなみ野線",
-        // 左側：駅行き（上：駅、中：片倉高校前、下：大学）
-        nodesIn: [
-            { pos: 0, label: "みなみ野駅(着)" },
-            { pos: 32, label: "八王子南郵便局前" },
-            { pos: 64, label: "片倉高校前" },
-            { pos: 100, label: "大学キャンパス(発)" }
-        ],
-        // 右側：大学行き（上：みなみ野駅、中：兵衛中央、下：大学）
-        nodesOut: [
-            { pos: 0, label: "みなみ野駅(発)" },
-            { pos: 34, label:"宇津貫公園入口"},
-            { pos: 64, label: "兵衛中央" },
-            { pos: 100, label: "大学キャンパス(着)" }
-        ]
-    },
-    'C': {
-        name: "学生会館線",
-        nodesOut: [
-            { pos: 0, label: "学生会館(発)" },
-            { pos: 25, label: "八王子南郵便局前" },
-            { pos: 75, label: "片倉高校前" },
-            { pos: 100, label: "大学キャンパス(着)" }
-        ],
-        nodesIn: [
-            { pos: 0, label: "学生会館(着)" },
-            { pos: 25, label: "八王子南郵便局前" },
-            { pos: 75, label: "片倉高校前" },
-            { pos: 100, label: "大学キャンパス(発)" }
-        ]
-    }
-};
-
-    let currentRoute = 'A';
-
-    function getDayType() {
-        const now = new Date();
-        const day = now.getDay();
-        if (day === 0) return 'sunday'; // 日曜日を追加
-        if (day === 6) return 'weekend'; // 土曜日
-        return 'weekday'; // 平手
-    }
-
-    // 修正：複数の時間帯に対応したシャトル判定
-    function isCurrentlyShuttle(ranges) {
-        if (!ranges || !Array.isArray(ranges)) return false;
-        const now = new Date();
-        const nowTotal = now.getHours() * 60 + now.getMinutes();
-        
-        return ranges.some(range => {
-            const [startH, startM] = range[0].split(':').map(Number);
-            const [endH, endM] = range[1].split(':').map(Number);
-            return nowTotal >= (startH * 60 + startM) && nowTotal <= (endH * 60 + endM);
-        });
-    }
-
-    function updateClock() {
-        const now = new Date();
-        document.getElementById('live-clock').innerText = now.toTimeString().split(' ')[0];
-        const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
-        const day = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
-        document.getElementById('live-date').innerText = `${y}/${m}/${d} (${day})`;
-    }
-
-    function switchTab(tab) {
-        const isDetail = tab === 'Detail';
-        document.getElementById('main-view').classList.toggle('hidden', isDetail);
-        document.getElementById('detail-view').classList.toggle('hidden', !isDetail);
-        if (!isDetail) {
-            currentRoute = tab;
-            document.getElementById('timetable-display').classList.add('hidden');
-            renderAll();
-        }
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${tab}`));
-    }
-
-   function calcNext(times) {
-        const now = new Date();
-        for (let t of times) {
-            const [h, m] = t.split(':').map(Number);
-            const target = new Date(); target.setHours(h, m, 0, 0);
-            const diffMs = target - now;
-            if (diffMs > 0) {
-                const sec = Math.floor(diffMs / 1000);
-                const min = Math.floor(sec / 60);
-                const remainderSec = String(sec % 60).padStart(2, '0');
-                return { min: min, sec: remainderSec, time: t }; // time: t を追加
-            }
-        }
-        return null;
-    }
-
-    function updateCountdowns() {
-        const dayType = getDayType();
-        if (dayType === 'sunday') {
-            document.getElementById('day-label').innerText = `運行ダイヤ：日曜（運休）`;
-            document.getElementById('count-out').innerText = "運休";
-            document.getElementById('count-in').innerText = "運休";
-            return;
-        }
-
-        const config = schedules[currentRoute][dayType];
-        
-        document.getElementById('route-card').classList.toggle('is-shuttle', isCurrentlyShuttle(config.shuttleRange));
-        document.getElementById('day-label').innerText = `運行ダイヤ：${dayType === 'weekend' ? '休日' : '平日'}`;
-
-        // 修正ポイント：時刻とカウントダウンをセットで表示する
-        const format = (times) => {
-            const res = calcNext(times);
-            if (!res) return "終了";
-            // res.time には "10:30" などの発車時刻が入るように calcNext も後ほど微修正します
-            return `${res.time}発 (${res.min}:${res.sec})`;
+    <script>
+        const travelTimes = {
+            'A': { out: 18, in: 12 },
+            'B': { out: 10, in: 7 },
+            'C': { out: 10, in: 10 }
         };
-        
-        document.getElementById('count-out').innerText = format(config.out);
-        document.getElementById('count-in').innerText = format(config.in);
+
+        const schedules = {
+            'A': {
+                weekday: {
+                    out: ["07:30", "07:40", "07:45", "07:50", "07:55", "09:15", "09:20", "09:25", "09:30", "09:35", "09:40", "09:45", "09:50", "09:55", "10:00", "10:05", "10:10", "10:15", "10:20", "10:25", "10:30", "10:35", "10:40", "10:45", "10:50", "11:00", "11:10", "11:20", "11:30", "11:40", "11:50", "12:05", "12:15", "12:20", "12:25", "12:30", "12:35", "12:40", "12:45", "12:50", "13:00", "13:10", "13:20", "13:30", "13:40", "13:50", "14:00", "14:10", "14:20", "14:30", "14:40", "14:50", "15:00", "15:11", "15:41", "15:51", "16:01", "16:11", "16:21", "16:31", "17:51", "18:01", "18:11", "18:21", "18:31", "18:41", "18:51", "19:21", "19:31", "19:41", "19:51", "20:01", "20:11", "20:21", "20:31", "20:41", "20:56", "21:11", "21:21", "21:26", "21:31"],
+                    in: ["07:15", "07:28", "07:33", "07:38", "07:43", "09:03", "09:08", "09:13", "09:18", "09:23", "09:28", "09:33", "09:38", "09:43", "09:48", "09:53", "09:58", "10:03", "10:08", "10:13", "10:18", "10:23", "10:28", "10:33", "10:38", "10:48", "10:58", "11:08", "11:18", "11:28", "11:38", "11:53", "12:03", "12:08", "12:13", "12:18", "12:23", "12:28", "12:33", "12:38", "12:48", "12:58", "13:08", "13:18", "13:28", "13:38", "13:48", "13:58", "14:08", "14:18", "14:28", "14:38", "14:48", "15:00", "15:30", "15:40", "15:50", "16:00", "16:10", "16:20", "17:40", "17:50", "18:00", "18:10", "18:20", "18:30", "18:40", "19:10", "19:20", "19:30", "19:40", "19:50", "20:00", "20:10", "20:20", "20:30", "20:45", "21:00", "21:10", "21:15", "21:20"],
+                    shuttleRange: [["07:55", "09:15"], ["15:11", "15:41"], ["16:31", "17:41"], ["18:51", "19:21"]]
+                },
+                weekend: {
+                    out: ["08:00", "08:20", "08:35", "08:50", "09:10", "09:40", "10:10", "10:45", "11:45", "12:10", "12:40", "13:15", "13:45", "15:00", "15:23", "15:53", "16:23", "16:53", "17:23", "17:52", "18:23", "19:23"],
+                    in: ["07:47", "08:07", "08:22", "08:37", "08:57", "09:27", "09:57", "10:32", "11:32", "11:57", "12:27", "13:02", "13:32", "14:47", "15:10", "15:40", "16:10", "16:40", "17:10", "17:40", "18:10", "19:10"],
+                    shuttleRange: null
+                },
+
+            },
+            'B': {
+                weekday: {
+                    out: ["07:29", "07:38", "07:45", "07:53", "07:59", "08:07", "08:16", "09:22", "09:33", "09:44", "09:56", "10:01", "10:10", "10:19", "10:25", "10:30", "10:41", "10:48", "10:57", "11:03", "11:17", "11:23", "11:37", "11:44", "11:57", "12:03", "12:08", "12:13", "12:17", "12:23", "12:37", "12:44", "12:50", "12:57", "13:03", "13:17", "13:23", "13:37", "13:44", "13:57", "14:04", "14:17", "14:23", "14:37", "14:44", "14:57", "15:03", "15:09", "15:21", "15:28", "15:41", "15:51", "16:03", "16:16", "16:26", "16:36", "16:46", "17:25", "17:34", "17:43", "17:52", "18:00", "18:09", "18:17", "18:27", "18:37", "18:51", "19:00", "19:12", "19:22", "19:34", "19:43", "19:54", "20:05", "20:15", "20:25", "20:37", "20:45", "20:56", "21:07", "21:18", "21:27"],
+                    in: ["07:22", "07:31", "07:38", "07:46", "07:52", "08:00", "08:09", "09:15", "09:26", "09:37", "09:49", "09:54", "10:03", "10:12", "10:18", "10:23", "10:34", "10:41", "10:50", "10:56", "11:10", "11:16", "11:30", "11:37", "11:50", "11:56", "12:01", "12:06", "12:10", "12:16", "12:30", "12:37", "12:43", "12:50", "12:56", "13:10", "13:16", "13:30", "13:37", "13:50", "13:57", "14:10", "14:16", "14:30", "14:37", "14:50", "14:56", "15:02", "15:14", "15:21", "15:34", "15:44", "15:56", "16:09", "16:19", "16:29", "16:39", "17:18", "17:27", "17:36", "17:45", "17:53", "18:02", "18:10", "18:20", "18:30", "18:44", "18:53", "19:05", "19:15", "19:27", "19:36", "19:47", "19:58", "20:08", "20:18", "20:30", "20:38", "20:49", "21:00", "21:11", "21:20"],
+                    shuttleRange: [["08:15", "09:25"], ["16:46", "17:25"], ["18:59", "19:11"]]
+                },
+                weekend: {
+                    out: ["08:16", "08:44", "09:11", "09:34", "10:25", "11:36", "12:36", "13:16", "14:16", "15:29", "16:29", "17:20", "17:49", "18:20", "19:14"],
+                    in: ["08:08", "08:36", "09:03", "09:26", "10:17", "11:28", "12:28", "13:08", "14:08", "15:21", "16:21", "17:12", "17:41", "18:12", "19:06"],
+                    shuttleRange: null
+                }
+            },
+            'C': {
+                weekday: {
+                    out: ["08:14", "08:34", "08:54", "09:14", "10:20", "10:45", "17:10"],
+                    in: ["08:04", "08:24", "08:44", "09:04", "10:10", "10:35", "17:00"],
+                    shuttleRange: null
+                },
+                weekend: { out: [], in: [], shuttleRange: null }
+            }
+        };
+
+        const busMaster = [
+            { id: '37', type: '三菱ふそう エアロスター', note: '運用離脱' }, { id: '38', type: '三菱ふそう エアロスター', note: '運用離脱' },
+            { id: '96', type: '三菱ふそう エアロスター', note: '' }, { id: '97', type: '三菱ふそう エアロスター', note: '' },
+            { id: '98', type: '三菱ふそう エアロスター', note: '' }, { id: '100', type: '三菱ふそう エアロスター', note: '' },
+            { id: '181', type: '日野ブルーリボン', note: '' }, { id: '182', type: '日野ブルーリボン', note: '' },
+            { id: '183', type: '日野ブルーリボン', note: '' }, { id: '315', type: '三菱ふそう エアロスター', note: '' },
+            { id: '337', type: '三菱ふそう エアロスター', note: '' }, { id: '338', type: '三菱ふそう エアロスター', note: '' },
+            { id: '339', type: '三菱ふそう エアロスター', note: '' }, { id: '374', type: 'いすゞエルガ', note: '' },
+            { id: '375', type: 'いすゞエルガ', note: '' }, { id: '387', type: 'いすゞエルガ', note: '' },
+            { id: '388', type: 'いすゞエルガ', note: '' },
+            { id: '398', type: '三菱ふそう エアロスター ', note: '' }, { id: '399', type: '三菱ふそう エアロスター', note: '' },
+            { id: '411', type: 'いすゞエルガ', note: '' }, { id: '412', type: '三菱ふそう エアロスター', note: '' },
+            { id: '413', type: '三菱ふそう エアロスター', note: '' }, { id: '416', type: '三菱ふそう エアロスター', note: '' },
+            { id: '417', type: '三菱ふそう エアロスター', note: '' }, { id: '418', type: '三菱ふそう エアロスター', note: '' },
+            { id: '421', type: 'いすゞエルガ', note: '' }, { id: '454', type: 'トヨタ・SORA', note: '' },
+            { id: '455', type: 'トヨタ・SORA', note: '' }, { id: '465', type: 'トヨタ・SORA', note: '' }
+        ];
+
+        const mapConfig = {
+            'A': {
+                name: "八王子線",
+                nodesOut: [
+                    { pos: 0, label: "八王子駅(発)" },
+                    { pos: 15, label: "子安町三丁目" },
+                    { pos: 45, label: "京王片倉" },
+                    { pos: 75, label: "片倉高校前" },
+                    { pos: 100, label: "大学キャンパス(着)" }
+                ],
+                nodesIn: [
+                    { pos: 0, label: "八王子駅(着)" },
+                    { pos: 15, label: "子安町三丁目" },
+                    { pos: 45, label: "京王片倉" },
+                    { pos: 75, label: "片倉高校前" },
+                    { pos: 100, label: "大学キャンパス(発)" }
+                ]
+            },
+            'B': {
+                name: "みなみ野線",
+                // 左側：駅行き（上：駅、中：片倉高校前、下：大学）
+                nodesIn: [
+                    { pos: 0, label: "みなみ野駅(着)" },
+                    { pos: 32, label: "八王子南郵便局前" },
+                    { pos: 64, label: "片倉高校前" },
+                    { pos: 100, label: "大学キャンパス(発)" }
+                ],
+                // 右側：大学行き（上：みなみ野駅、中：兵衛中央、下：大学）
+                nodesOut: [
+                    { pos: 0, label: "みなみ野駅(発)" },
+                    { pos: 34, label: "宇津貫公園入口" },
+                    { pos: 64, label: "兵衛中央" },
+                    { pos: 100, label: "大学キャンパス(着)" }
+                ]
+            },
+            'C': {
+                name: "学生会館線",
+                nodesOut: [
+                    { pos: 0, label: "学生会館(発)" },
+                    { pos: 25, label: "八王子南郵便局前" },
+                    { pos: 75, label: "片倉高校前" },
+                    { pos: 100, label: "大学キャンパス(着)" }
+                ],
+                nodesIn: [
+                    { pos: 0, label: "学生会館(着)" },
+                    { pos: 25, label: "八王子南郵便局前" },
+                    { pos: 75, label: "片倉高校前" },
+                    { pos: 100, label: "大学キャンパス(発)" }
+                ]
+            }
+        };
+
+        let currentRoute = 'A';
+
+        function getDayType() {
+            const now = new Date();
+            const day = now.getDay();
+            if (day === 0) return 'sunday'; // 日曜日を追加
+            if (day === 6) return 'weekend'; // 土曜日
+            return 'weekday'; // 平手
         }
 
-    function toggleTimetable() {
-        const el = document.getElementById('timetable-display');
-        el.classList.toggle('hidden');
-        if (!el.classList.contains('hidden')) {
-            const config = schedules[currentRoute][getDayType()];
-            const tTime = travelTimes[currentRoute];
-            document.getElementById('shuttle-info').innerText = config.shuttleRange ? 
-                `【シャトル時間帯】 ${config.shuttleRange.map(r => r.join('～')).join(', ')}` : "";
+        // 修正：複数の時間帯に対応したシャトル判定
+        function isCurrentlyShuttle(ranges) {
+            if (!ranges || !Array.isArray(ranges)) return false;
+            const now = new Date();
+            const nowTotal = now.getHours() * 60 + now.getMinutes();
 
-            const addM = (timeStr, mins) => {
-                const [h, m] = timeStr.split(':').map(Number);
-                const d = new Date(); d.setHours(h, m + mins);
-                return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            return ranges.some(range => {
+                const [startH, startM] = range[0].split(':').map(Number);
+                const [endH, endM] = range[1].split(':').map(Number);
+                return nowTotal >= (startH * 60 + startM) && nowTotal <= (endH * 60 + endM);
+            });
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = now.toTimeString().split(' ')[0];
+            const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
+            const day = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
+            document.getElementById('live-date').innerText = `${y}/${m}/${d} (${day})`;
+        }
+
+        // 💡 switchTab 関数を以下に置き換え
+        function switchTab(tab) {
+            const isDetail = tab === 'Detail';
+            const isRecord = tab === 'Record';
+
+            // 表示・非表示の切り替え
+            document.getElementById('main-view').classList.toggle('hidden', isDetail || isRecord);
+            document.getElementById('detail-view').classList.toggle('hidden', !isDetail);
+            document.getElementById('record-view').classList.toggle('hidden', !isRecord);
+
+            // ⬇️ 乗車記録タブまたは編成タブのときはマップを非表示にする
+            const mapContainer = document.getElementById('route-map-container');
+            if (mapContainer) {
+                mapContainer.classList.toggle('hidden', isDetail || isRecord);
+            }
+
+            if (isRecord) {
+                renderRecordMasterGrid(); // 乗車記録用のボタン一覧を描画
+                renderRanking();          // ランキングを描画
+                renderMyHistory();       // 履歴を描画
+            } else if (!isDetail) {
+                currentRoute = tab;
+                document.getElementById('timetable-display').classList.add('hidden');
+                renderAll();
+            }
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${tab}`));
+        }
+
+        function calcNext(times) {
+            const now = new Date();
+            for (let t of times) {
+                const [h, m] = t.split(':').map(Number);
+                const target = new Date(); target.setHours(h, m, 0, 0);
+                const diffMs = target - now;
+                if (diffMs > 0) {
+                    const sec = Math.floor(diffMs / 1000);
+                    const min = Math.floor(sec / 60);
+                    const remainderSec = String(sec % 60).padStart(2, '0');
+                    return { min: min, sec: remainderSec, time: t }; // time: t を追加
+                }
+            }
+            return null;
+        }
+
+        function updateCountdowns() {
+            const dayType = getDayType();
+            if (dayType === 'sunday') {
+                document.getElementById('day-label').innerText = `運行ダイヤ：日曜（運休）`;
+                document.getElementById('count-out').innerText = "運休";
+                document.getElementById('count-in').innerText = "運休";
+                return;
+            }
+
+            const config = schedules[currentRoute][dayType];
+
+            document.getElementById('route-card').classList.toggle('is-shuttle', isCurrentlyShuttle(config.shuttleRange));
+            document.getElementById('day-label').innerText = `運行ダイヤ：${dayType === 'weekend' ? '休日' : '平日'}`;
+
+            // 修正ポイント：時刻とカウントダウンをセットで表示する
+            const format = (times) => {
+                const res = calcNext(times);
+                if (!res) return "終了";
+                // res.time には "10:30" などの発車時刻が入るように calcNext も後ほど微修正します
+                return `${res.time}発 (${res.min}:${res.sec})`;
             };
-            const fill = (id, list, addMins) => {
-                document.getElementById(id).innerHTML = list.map(t => `
+
+            document.getElementById('count-out').innerText = format(config.out);
+            document.getElementById('count-in').innerText = format(config.in);
+        }
+
+        function toggleTimetable() {
+            const el = document.getElementById('timetable-display');
+            el.classList.toggle('hidden');
+            if (!el.classList.contains('hidden')) {
+                const config = schedules[currentRoute][getDayType()];
+                const tTime = travelTimes[currentRoute];
+                document.getElementById('shuttle-info').innerText = config.shuttleRange ?
+                    `【シャトル時間帯】 ${config.shuttleRange.map(r => r.join('～')).join(', ')}` : "";
+
+                const addM = (timeStr, mins) => {
+                    const [h, m] = timeStr.split(':').map(Number);
+                    const d = new Date(); d.setHours(h, m + mins);
+                    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                };
+                const fill = (id, list, addMins) => {
+                    document.getElementById(id).innerHTML = list.map(t => `
                     <div class="time-row"><span>${t} <small style="color:#64748b;">▶</small> ${addM(t, addMins)}</span><span style="font-size:0.7rem; color:#64748b;">着</span></div>
                 `).join('');
-            };
-            fill('list-out', config.out, tTime.out);
-            fill('list-in', config.in, tTime.in);
+                };
+                fill('list-out', config.out, tTime.out);
+                fill('list-in', config.in, tTime.in);
+            }
         }
-    }
-    
-    function updateVerticalMap() {
-    const route = currentRoute;
-    const config = mapConfig[route];
-    const track = document.getElementById('vertical-track');
-    if (!track) return;
 
-    // 前回の環状クラスが残っていたら削除
-    track.classList.remove('loop-track');
+        function updateVerticalMap() {
+            const route = currentRoute;
+            const config = mapConfig[route];
+            const track = document.getElementById('vertical-track');
+            if (!track) return;
 
-    const dayType = getDayType();
-    
-    // --- ① 左右それぞれの経由地（ノード）を独立して描画 ---
-    // 左側（IN: 駅行きルート）のノード
-    let html = config.nodesIn.map(node => `
+            // 前回の環状クラスが残っていたら削除
+            track.classList.remove('loop-track');
+
+            const dayType = getDayType();
+
+            // --- ① 左右それぞれの経由地（ノード）を独立して描画 ---
+            // 左側（IN: 駅行きルート）のノード
+            let html = config.nodesIn.map(node => `
         <div class="map-node node-in" style="top: ${node.pos}%">
             <span class="node-label label-in">${node.label}</span>
         </div>
     `).join('');
 
-    // 右側（OUT: 大学行きルート）のノード
-    html += config.nodesOut.map(node => `
+            // 右側（OUT: 大学行きルート）のノード
+            html += config.nodesOut.map(node => `
         <div class="map-node node-out" style="top: ${node.pos}%">
             <span class="node-label label-out">${node.label}</span>
         </div>
     `).join('');
 
-    // 日曜日はノードのみ表示して終了
-    if (dayType === 'sunday') {
-        track.innerHTML = html;
-        return;
-    }
+            // 日曜日はノードのみ表示して終了
+            if (dayType === 'sunday') {
+                track.innerHTML = html;
+                return;
+            }
 
-    const sched = schedules[route][dayType];
-    if (!sched || !sched.out || !sched.in) {
-        track.innerHTML = html;
-        return;
-    }
+            const sched = schedules[route][dayType];
+            if (!sched || !sched.out || !sched.in) {
+                track.innerHTML = html;
+                return;
+            }
 
-    const now = new Date();
-    const nowTotal = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
+            const now = new Date();
+            const nowTotal = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
 
-    // --- ② 右側：大学行き（OUT: 上[0%] ➔ 下[100%] へ↓向きに進む） ---
-    const outTime = travelTimes[route].out;
-    const runningOutTimes = sched.out.filter(t => {
-        const [h, m] = t.split(':').map(Number);
-        const departureTotal = h * 60 + m;
-        return departureTotal <= nowTotal && nowTotal <= (departureTotal + outTime);
-    });
+            // --- ② 右側：大学行き（OUT: 上[0%] ➔ 下[100%] へ↓向きに進む） ---
+            const outTime = travelTimes[route].out;
+            const runningOutTimes = sched.out.filter(t => {
+                const [h, m] = t.split(':').map(Number);
+                const departureTotal = h * 60 + m;
+                return departureTotal <= nowTotal && nowTotal <= (departureTotal + outTime);
+            });
 
-    runningOutTimes.forEach((lastOut) => {
-        const [h, m] = lastOut.split(':').map(Number);
-        const elapsed = nowTotal - (h * 60 + m);
-        
-        // 進捗率（0%：駅発 ➔ 100%：大学着）
-        const percent = (elapsed / outTime) * 100;
-        
-        const arrTime = new Date(); arrTime.setHours(h, m + outTime);
-        const arrStr = `${arrTime.getHours()}:${String(arrTime.getMinutes()).padStart(2,'0')}`;
-        const isVisible = (visibleDetailId === "out_" + lastOut) ? "" : "hidden";
-        
-        // 右側のライン（line-out）に沿って配置
-        html += `
+            runningOutTimes.forEach((lastOut) => {
+                const [h, m] = lastOut.split(':').map(Number);
+                const elapsed = nowTotal - (h * 60 + m);
+
+                // 進捗率（0%：駅発 ➔ 100%：大学着）
+                const percent = (elapsed / outTime) * 100;
+
+                const arrTime = new Date(); arrTime.setHours(h, m + outTime);
+                const arrStr = `${arrTime.getHours()}:${String(arrTime.getMinutes()).padStart(2, '0')}`;
+                const isVisible = (visibleDetailId === "out_" + lastOut) ? "" : "hidden";
+
+                // 右側のライン（line-out）に沿って配置
+                html += `
             <div class="bus-marker bus-to-univ" style="top: ${percent}%" onclick="toggleBusDetail('out_${lastOut}')">
                 <div class="bus-detail-info ${isVisible}">大学行 ${lastOut}⇒${arrStr}</div>
             </div>`;
-    });
+            });
 
 
-    // --- ③ 左側：駅行き（IN: 下[100%] ➔ 上[0%] へ↑向きに進む） ---
-    const inTime = travelTimes[route].in;
-    const runningInTimes = sched.in.filter(t => {
-        const [h, m] = t.split(':').map(Number);
-        const departureTotal = h * 60 + m;
-        return departureTotal <= nowTotal && nowTotal <= (departureTotal + inTime);
-    });
+            // --- ③ 左側：駅行き（IN: 下[100%] ➔ 上[0%] へ↑向きに進む） ---
+            const inTime = travelTimes[route].in;
+            const runningInTimes = sched.in.filter(t => {
+                const [h, m] = t.split(':').map(Number);
+                const departureTotal = h * 60 + m;
+                return departureTotal <= nowTotal && nowTotal <= (departureTotal + inTime);
+            });
 
-    runningInTimes.forEach((lastIn) => {
-        const [h, m] = lastIn.split(':').map(Number);
-        const elapsed = nowTotal - (h * 60 + m);
-        
-        // 進捗率（100%：大学発 ➔ 0%：駅着）
-        const percent = 100 - ((elapsed / inTime) * 100);
-        
-        const arrTime = new Date(); arrTime.setHours(h, m + inTime);
-        const arrStr = `${arrTime.getHours()}:${String(arrTime.getMinutes()).padStart(2,'0')}`;
-        const isVisible = (visibleDetailId === "in_" + lastIn) ? "" : "hidden";
+            runningInTimes.forEach((lastIn) => {
+                const [h, m] = lastIn.split(':').map(Number);
+                const elapsed = nowTotal - (h * 60 + m);
 
-        // 左側のライン（line-in）に沿って配置
-        html += `
+                // 進捗率（100%：大学発 ➔ 0%：駅着）
+                const percent = 100 - ((elapsed / inTime) * 100);
+
+                const arrTime = new Date(); arrTime.setHours(h, m + inTime);
+                const arrStr = `${arrTime.getHours()}:${String(arrTime.getMinutes()).padStart(2, '0')}`;
+                const isVisible = (visibleDetailId === "in_" + lastIn) ? "" : "hidden";
+
+                // 左側のライン（line-in）に沿って配置
+                html += `
             <div class="bus-marker bus-to-station" style="top: ${percent}%" onclick="toggleBusDetail('in_${lastIn}')">
                 <div class="bus-detail-info ${isVisible}">駅・会館行 ${lastIn}⇒${arrStr}</div>
             </div>`;
-    });
-
-    track.innerHTML = html;
-}
-
-let visibleDetailId = null;
-
-// 詳細表示を切り替える関数
-function toggleBusDetail(uniqueId) {
-    // 同じものをタップしたら消す、違うものならそっちを表示
-    if (visibleDetailId === uniqueId) {
-        visibleDetailId = null;
-    } else {
-        visibleDetailId = uniqueId;
-    }
-    // 即座に描画に反映
-    updateVerticalMap();
-}
-
-
-    
-
-    function renderAll() {
-    // Firebaseから同期された最新のリストをLocalStorage経由で取得
-    const active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
-    
-    document.getElementById('op-list').innerHTML = active.map(id => `
-        <div class="in-bus-card">
-            <strong>${id}</strong>
-            <button class="out-btn" onclick="busAction('${id}', 'out')">OUT</button>
-        </div>
-    `).join('') || '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.8rem;">現在運用なし</div>';
-    
-    updateCountdowns();
-    updateVerticalMap();
-}
-
-function syncActiveBuses() {
-        ['A', 'B', 'C'].forEach(route => {
-            window.fs.onSnapshot(window.fs.doc(window.db, "active_buses", route), (docSnap) => {
-                if (docSnap.exists()) {
-                    const activeList = docSnap.data().buses;
-                    localStorage.setItem(`active_${route}`, JSON.stringify(activeList));
-                    if (currentRoute === route) renderAll();
-                }
             });
-        });
-    }
 
-    async function busAction(id, type) {
-        if (!window.db) return; // Firebaseが準備できていなければ何もしない
-    
-    let active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
-    
-    if (type === 'in' && !active.includes(id)) {
-        active.push(id);
-        // 履歴をFirebaseへ保存
-        await window.fs.addDoc(window.fs.collection(window.db, "bus_history"), {
-            busId: id,
-            route: currentRoute,
-            timestamp: new Date()
-        });
-    } else if (type === 'out') {
-        active = active.filter(x => x !== id);
-    }
-
-    // ★重要：ここでFirebase（Firestore）のデータを更新します
-    // これにより、Firestore側のデータが書き換わり、全員の画面へ通知が行きます
-    await window.fs.setDoc(window.fs.doc(window.db, "active_buses", currentRoute), { buses: active });}
-
-    async function checkAndResetDaily() {
-        const today = new Date().toLocaleDateString('ja-JP');
-        const configRef = window.fs.doc(window.db, "system", "lastReset");
-        
-        try {
-            const docSnap = await window.fs.getDoc(configRef);
-            const lastResetDate = docSnap.exists() ? docSnap.data().date : "";
-
-            if (lastResetDate !== today) {
-                // 全路線の運用状況をFirebase上で空にする
-                const routes = ['A', 'B', 'C'];
-                for (const route of routes) {
-                    await window.fs.setDoc(window.fs.doc(window.db, "active_buses", route), { buses: [] });
-                }
-                // リセットした日付を今日に更新
-                await window.fs.setDoc(configRef, { date: today });
-                console.log("運用データをリセットしました");
-            }
-        } catch (e) {
-            console.error("リセット処理でエラーが発生しました:", e);
+            track.innerHTML = html;
         }
+
+        let visibleDetailId = null;
+
+        // 詳細表示を切り替える関数
+        function toggleBusDetail(uniqueId) {
+            // 同じものをタップしたら消す、違うものならそっちを表示
+            if (visibleDetailId === uniqueId) {
+                visibleDetailId = null;
+            } else {
+                visibleDetailId = uniqueId;
+            }
+            // 即座に描画に反映
+            updateVerticalMap();
+        }
+        function renderAll() {
+            const active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
+
+            document.getElementById('op-list').innerHTML = active.map(id => {
+                const busInfo = busMaster.find(b => b.id === id);
+                const imgTag = (busInfo && busInfo.img) ? `<img src="${busInfo.img}" class="bus-card-thumb">` : '';
+
+                return `
+            <div class="in-bus-card">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    ${imgTag}
+                    <strong>${id}</strong>
+                </div>
+                <button class="out-btn" onclick="busAction('${id}', 'out')">OUT</button>
+            </div>
+        `;
+            }).join('') || '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.8rem;">現在運用なし</div>';
+
+            updateCountdowns();
+            updateVerticalMap();
+        }
+
+        function syncActiveBuses() {
+            ['A', 'B', 'C'].forEach(route => {
+                window.fs.onSnapshot(window.fs.doc(window.db, "active_buses", route), (docSnap) => {
+                    if (docSnap.exists()) {
+                        const activeList = docSnap.data().buses;
+                        localStorage.setItem(`active_${route}`, JSON.stringify(activeList));
+                        if (currentRoute === route) renderAll();
+                    }
+                });
+            });
+        }
+
+        async function busAction(id, type) {
+            if (!window.db) return; // Firebaseが準備できていなければ何もしない
+
+            let active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
+
+            if (type === 'in' && !active.includes(id)) {
+                active.push(id);
+                // 履歴をFirebaseへ保存
+                await window.fs.addDoc(window.fs.collection(window.db, "bus_history"), {
+                    busId: id,
+                    route: currentRoute,
+                    timestamp: new Date()
+                });
+            } else if (type === 'out') {
+                active = active.filter(x => x !== id);
+            }
+
+            // ★重要：ここでFirebase（Firestore）のデータを更新します
+            // これにより、Firestore側のデータが書き換わり、全員の画面へ通知が行きます
+            await window.fs.setDoc(window.fs.doc(window.db, "active_buses", currentRoute), { buses: active });
+        }
+
+
+        function addRideRecord(busId) {
+            // ローカルストレージから現在の記録を取得、なければ空オブジェクト
+            let records = JSON.parse(localStorage.getItem('my_bus_ride_records')) || {};
+
+            // カウントを+1
+            records[busId] = (records[busId] || 0) + 1;
+
+            // ローカルストレージに保存
+            localStorage.setItem('my_bus_ride_records', JSON.stringify(records));
+
+            alert(`車両番号: ${busId} の乗車を記録しました！（現在 ${records[busId]} 回目）`);
+        }
+
+        function renderRecordMasterGrid() {
+            const grid = document.getElementById('record-master-grid');
+            if (!grid) return;
+
+            // busMaster(全車両データ)からボタンを生成
+            // 押しやすいように、通常のINボタンと同じスタイル（in-btn）か、少し色を変えて区別します
+            grid.innerHTML = busMaster.map(b => `
+        <div class="in-btn" style="background: #f0fdf4; border-color: #bbf7d0; box-shadow: 0 2px 0 #bbf7d0;" onclick="addRideRecord('${b.id}')">
+            ${b.id}
+        </div>
+    `).join('');
+        }
+
+
+        // 乗車回数を記録する関数（記録後に自動でランキングを再描画するように変更）
+        function addRideRecord(busId) {
+            // 1. ランキング用のカウント保存
+            let records = JSON.parse(localStorage.getItem('my_bus_ride_records')) || {};
+            records[busId] = (records[busId] || 0) + 1;
+            localStorage.setItem('my_bus_ride_records', JSON.stringify(records));
+
+            // 2. 履歴（日時と編成）の保存
+            let historyList = JSON.parse(localStorage.getItem('my_bus_ride_history')) || [];
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            // 履歴リストの先頭に追加（新しい順にするため）
+            historyList.unshift({
+                date: dateStr,
+                busId: busId
+            });
+
+            // 履歴がたまりすぎないように直近100件までに制限
+            if (historyList.length > 100) historyList.pop();
+            localStorage.setItem('my_bus_ride_history', JSON.stringify(historyList));
+
+            alert(`車両番号: ${busId} の乗車を記録しました！`);
+
+            // 画面を即座に更新
+            renderRanking();
+            renderMyHistory();
+        }
+
+
+        // ランキングを表示する関数
+        function renderRanking() {
+            const records = JSON.parse(localStorage.getItem('my_bus_ride_records')) || {};
+            const tbody = document.querySelector('#ranking-table tbody');
+            if (!tbody) return;
+
+            const sortedRecords = Object.keys(records).map(id => {
+                return { id: id, count: records[id] };
+            }).sort((a, b) => b.count - a.count);
+
+            if (sortedRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#94a3b8; padding: 20px 0;">乗車記録がまだありません。</td></tr>`;
+                return;
+            }
+
+            let rank = 1;
+            tbody.innerHTML = sortedRecords.map((item, index) => {
+                if (index > 0 && item.count < sortedRecords[index - 1].count) {
+                    rank = index + 1;
+                }
+
+                let rankBadge = rank;
+                if (rank === 1) rankBadge = '🥇';
+                if (rank === 2) rankBadge = '🥈';
+                if (rank === 3) rankBadge = '🥉';
+
+                return `
+            <tr>
+                <td style="font-weight: bold; text-align: center;">${rankBadge}</td>
+                <td style="font-weight: bold; color: var(--primary);">${item.id}</td>
+                <td><strong style="font-size: 1.1rem;">${item.count}</strong> 回</td>
+            </tr>
+        `;
+            }).join('');
+        }
+
+        function renderMyHistory() {
+    let historyList = JSON.parse(localStorage.getItem('my_bus_ride_history')) || [];
+    const container = document.getElementById('my-history-content');
+    if (!container) return;
+    
+    if (historyList.length === 0) {
+        container.innerHTML = `<div style="text-align:center; color:#94a3b8; padding: 10px 0;">乗車履歴はありません。</div>`;
+        return;
     }
-
-    async function showHistory(id) {
-    if (!window.db) return;
     
-    const box = document.getElementById('history-box');
-    box.classList.remove('hidden');
-    document.getElementById('history-title').innerText = `${id} の履歴`;
-    document.getElementById('history-content').innerHTML = "読み込み中...";
+    // 📅 過去1ヶ月（30日前）の基準日時を計算
+    const now = new Date();
+    const oneMonthAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30日前のミリ秒数
     
-    try {
-        const q = window.fs.query(
-            window.fs.collection(window.db, "bus_history"),
-            window.fs.where("busId", "==", String(id)), // 文字列として確実に指定
-            window.fs.orderBy("timestamp", "desc"),    // ここでインデックスが必要
-            window.fs.limit(10)
-        );
-
-        const querySnapshot = await window.fs.getDocs(q);
-        let html = "";
-
-        const routeNames = { 'A': '八王子線', 'B': 'みなみ野線', 'C': '学生会館線' };
+    // 過去1ヶ月以内の履歴だけに絞り込む（フィルタリング）
+    const recentHistory = historyList.filter(item => {
+        // 保存されている文字列 "YYYY/MM/DD HH:MM" をDateオブジェクトに変換
+        const itemDate = new Date(item.date);
+        // 30日前より新しい（大きい）データのみ true を返す
+        return itemDate >= oneMonthAgo;
+    });
+    
+    // もし1ヶ月以内のデータが1件もない場合
+    if (recentHistory.length === 0) {
+        container.innerHTML = `<div style="text-align:center; color:#94a3b8; padding: 10px 0;">直近1ヶ月以内の乗車履歴はありません。</div>`;
+        return;
+    }
+    
+    // 絞り込んだ「直近1ヶ月分」のデータのみをHTML化
+    container.innerHTML = recentHistory.map((item) => {
+        // 削除ボタンで正しく元の配列から削除できるように、元の historyList における正確なインデックスを見つける
+        const originalIndex = historyList.findIndex(h => h.date === item.date && h.busId === item.busId);
         
-        if (querySnapshot.empty) {
-            html = "履歴はありません";
-        } else {
-            querySnapshot.forEach((doc) => {
-                const h = doc.data();
-                if (h.timestamp) {
-                    const date = h.timestamp.toDate(); 
-                    const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
-                    const name = routeNames[h.route] || h.route; 
-                    
-                    // doc.id (FirestoreのドキュメントID) を引数に渡して、削除ボタンを設置
-                    html += `
+        return `
+            <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
+                <div>
+                    <span style="color: #64748b; font-family: monospace;">[${item.date}]</span>
+                    <span style="font-weight: bold; color: var(--accent); margin-left: 8px;">${item.busId} </span>
+                </div>
+                <button onclick="deleteRideRecord(${originalIndex})" style="background: #fee2e2; color: var(--danger); border: none; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">
+                    削除
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+        // 全記録リセット関数
+        function clearRecord() {
+            if (confirm('これまでのすべての乗車記録が消去されます。よろしいですか？')) {
+                localStorage.removeItem('my_bus_ride_records');
+                localStorage.removeItem('my_bus_ride_history');
+                renderRanking(); // 再描画
+                renderMyHistory(); // 再描画
+            }
+        }
+
+        // 特定の乗車記録を削除する関数
+        function deleteRideRecord(index) {
+            let historyList = JSON.parse(localStorage.getItem('my_bus_ride_history')) || [];
+            let records = JSON.parse(localStorage.getItem('my_bus_ride_records')) || {};
+
+            if (index < 0 || index >= historyList.length) return;
+
+            // 削除対象のデータを取得
+            const target = historyList[index];
+
+            if (confirm(`[${target.date}] ${target.busId} の乗車記録を取り消しますか？\n（ランキングのカウントも1減ります）`)) {
+
+                // 1. ランキング側のカウントをマイナス1する
+                if (records[target.busId]) {
+                    records[target.busId] -= 1;
+                    // カウントが0になったらデータごと削除してすっきりさせる
+                    if (records[target.busId] <= 0) {
+                        delete records[target.busId];
+                    }
+                }
+
+                // 2. 履歴リストから該当の1件を削除
+                historyList.splice(index, 1);
+
+                // 3. ローカルストレージに最新状態を保存
+                localStorage.setItem('my_bus_ride_records', JSON.stringify(records));
+                localStorage.setItem('my_bus_ride_history', JSON.stringify(historyList));
+
+                // 4. 画面のランキングと履歴を即座に再描画
+                renderRanking();
+                renderMyHistory();
+            }
+        }
+
+
+
+
+
+        async function checkAndResetDaily() {
+            const today = new Date().toLocaleDateString('ja-JP');
+            const configRef = window.fs.doc(window.db, "system", "lastReset");
+
+            try {
+                const docSnap = await window.fs.getDoc(configRef);
+                const lastResetDate = docSnap.exists() ? docSnap.data().date : "";
+
+                if (lastResetDate !== today) {
+                    // 全路線の運用状況をFirebase上で空にする
+                    const routes = ['A', 'B', 'C'];
+                    for (const route of routes) {
+                        await window.fs.setDoc(window.fs.doc(window.db, "active_buses", route), { buses: [] });
+                    }
+                    // リセットした日付を今日に更新
+                    await window.fs.setDoc(configRef, { date: today });
+                    console.log("運用データをリセットしました");
+                }
+            } catch (e) {
+                console.error("リセット処理でエラーが発生しました:", e);
+            }
+        }
+
+        async function showHistory(id) {
+            if (!window.db) return;
+
+            const box = document.getElementById('history-box');
+            box.classList.remove('hidden');
+            document.getElementById('history-title').innerText = `${id} の履歴`;
+            document.getElementById('history-content').innerHTML = "読み込み中...";
+
+            try {
+                const q = window.fs.query(
+                    window.fs.collection(window.db, "bus_history"),
+                    window.fs.where("busId", "==", String(id)), // 文字列として確実に指定
+                    window.fs.orderBy("timestamp", "desc"),    // ここでインデックスが必要
+                    window.fs.limit(10)
+                );
+
+                const querySnapshot = await window.fs.getDocs(q);
+                let html = "";
+
+                const routeNames = { 'A': '八王子線', 'B': 'みなみ野線', 'C': '学生会館線' };
+
+                if (querySnapshot.empty) {
+                    html = "履歴はありません";
+                } else {
+                    querySnapshot.forEach((doc) => {
+                        const h = doc.data();
+                        if (h.timestamp) {
+                            const date = h.timestamp.toDate();
+                            const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                            const name = routeNames[h.route] || h.route;
+
+                            // doc.id (FirestoreのドキュメントID) を引数に渡して、削除ボタンを設置
+                            html += `
                         <div class="history-item">
                             <span>・ ${dateStr} [${name}]</span>
                             <button class="del-history-btn" onclick="deleteHistory('${id}', '${doc.id}')">削除</button>
                         </div>`;
+                        }
+                    });
                 }
-            });
+                document.getElementById('history-content').innerHTML = html;
+            } catch (e) {
+                console.error("履歴取得エラー:", e);
+                // ここに出るURLをクリックしてインデックスを作成してください
+                document.getElementById('history-content').innerHTML = "読み込みエラー";
+            }
         }
-        document.getElementById('history-content').innerHTML = html;
-    } catch (e) {
-        console.error("履歴取得エラー:", e);
-        // ここに出るURLをクリックしてインデックスを作成してください
-        document.getElementById('history-content').innerHTML = "読み込みエラー";
-    }
-}
 
-    async function deleteHistory(busId, hid) {
-        if (!confirm('削除しますか？')) return;
-        
-        try {
-        // Firebase(Firestore)上の該当ドキュメントを直接削除
-        const docRef = window.fs.doc(window.db, "bus_history", hid);
-        await window.fs.deleteDoc(docRef);
-        
-        console.log("履歴を削除しました");
-        // 削除が完了したら、再度履歴を読み込んで画面を更新
-        showHistory(busId);
-    } catch (e) {
-        console.error("履歴の削除に失敗しました:", e);
-        alert("削除に失敗しました。セッションか権限を確認してください。");
-    }
-    }
+        async function deleteHistory(busId, hid) {
+            if (!confirm('削除しますか？')) return;
 
-    document.getElementById('master-grid').innerHTML = busMaster.map(b => `<div class="in-btn" onclick="busAction('${b.id}', 'in')">${b.id}</div>`).join('');
-    document.querySelector('#detail-table tbody').innerHTML = busMaster.map(b => `<tr><td class="clickable-id" onclick="showHistory('${b.id}')">${b.id}</td><td>${b.type}</td><td>${b.note}</td></tr>`).join('');
-    
-    setInterval(updateClock, 1000);
-    setInterval(updateCountdowns, 1000);
+            try {
+                // Firebase(Firestore)上の該当ドキュメントを直接削除
+                const docRef = window.fs.doc(window.db, "bus_history", hid);
+                await window.fs.deleteDoc(docRef);
 
-    setInterval(updateVerticalMap, 1000);
+                console.log("履歴を削除しました");
+                // 削除が完了したら、再度履歴を読み込んで画面を更新
+                showHistory(busId);
+            } catch (e) {
+                console.error("履歴の削除に失敗しました:", e);
+                alert("削除に失敗しました。セッションか権限を確認してください。");
+            }
+        }
 
-// Firebaseの同期を開始（window.fsが準備できてから実行）
-window.addEventListener('load', () => {
-    if (typeof syncActiveBuses === 'function') {
-        syncActiveBuses();
-    }
-    if (typeof checkAndResetDaily === 'function') {
-        checkAndResetDaily();
-    }
-});
+        document.getElementById('master-grid').innerHTML = busMaster.map(b => `<div class="in-btn" onclick="busAction('${b.id}', 'in')">${b.id}</div>`).join('');
+        document.querySelector('#detail-table tbody').innerHTML = busMaster.map(b => {
+            const imgTag = b.img ? `<img src="${b.img}" class="table-bus-thumb">` : '';
+            return `
+                <tr>
+                    <td class="clickable-id" onclick="showHistory('${b.id}')" style="display: flex; align-items: center; gap: 8px;">
+                        ${imgTag}
+                        <span>${b.id}</span>
+            </td>
+            <td>${b.type}</td>
+            <td>${b.note}</td>
+        </tr>
+    `;
+        }).join('');
+        setInterval(updateClock, 1000);
+        setInterval(updateCountdowns, 1000);
+
+        setInterval(updateVerticalMap, 1000);
+
+        // Firebaseの同期を開始（window.fsが準備できてから実行）
+        window.addEventListener('load', () => {
+            if (typeof syncActiveBuses === 'function') {
+                syncActiveBuses();
+            }
+            if (typeof checkAndResetDaily === 'function') {
+                checkAndResetDaily();
+            }
+        });
+
+        // 登録されているタブの順番を配列で定義
+        const tabOrder = ['A', 'B', 'C', 'Detail', 'Record'];
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        // 画面に指が触れた瞬間
+        window.addEventListener('touchstart', function (event) {
+            touchStartX = event.changedTouches[0].screenX;
+            touchStartY = event.changedTouches[0].screenY;
+        }, { passive: true });
+
+        // 画面から指が離れた瞬間
+        window.addEventListener('touchend', function (event) {
+            touchEndX = event.changedTouches[0].screenX;
+            touchEndY = event.changedTouches[0].screenY;
+            handleSwipeGesture();
+        }, { passive: true });
+
+        // スワイプ方向を判定してタブを切り替える関数
+        function handleSwipeGesture() {
+            const xDiff = touchEndX - touchStartX;
+            const yDiff = touchEndY - touchStartY;
+
+            // 縦方向の移動（スクロール）の方が大きい場合は、タブ切り替えを無視する
+            if (Math.abs(yDiff) > Math.abs(xDiff)) {
+                return;
+            }
+
+            // 誤作動防止：横の移動距離が50px未満なら処理しない
+            if (Math.abs(xDiff) < 50) {
+                return;
+            }
+
+            // 現在のタブのインデックスを取得（currentRoute を基準にする）
+            // もし現在の表示が Detail や Record の場合は、その文字列をベースにする
+            let currentTab = currentRoute;
+            if (!document.getElementById('detail-view').classList.contains('hidden')) {
+                currentTab = 'Detail';
+            } else if (!document.getElementById('record-view').classList.contains('hidden')) {
+                currentTab = 'Record';
+            }
+
+            let currentIndex = tabOrder.indexOf(currentTab);
+            if (currentIndex === -1) currentIndex = 0;
+
+            if (xDiff < 0) {
+                // ⬅️ 左へスワイプ（指を左に動かした ＝ 次のタブを表示）
+                if (currentIndex < tabOrder.length - 1) {
+                    switchTab(tabOrder[currentIndex + 1]);
+                }
+            } else {
+                // ➡️ 右へスワイプ（指を右に動かした ＝ 前のタブを表示）
+                if (currentIndex > 0) {
+                    switchTab(tabOrder[currentIndex - 1]);
+                }
+            }
+        }
 
 
-    renderAll();
-</script>
+        renderAll();
+    </script>
 </body>
+
 </html>

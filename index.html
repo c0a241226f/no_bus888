@@ -641,7 +641,10 @@
                     in: ["07:47", "08:07", "08:22", "08:37", "08:57", "09:27", "09:57", "10:32", "11:32", "11:57", "12:27", "13:02", "13:32", "14:47", "15:10", "15:40", "16:10", "16:40", "17:10", "17:40", "18:10", "19:10"],
                     shuttleRange: null
                 },
-
+                rinji: {
+                    out: ["07:34", "07:40", "07:50", "08:00", "08:10", "08:20", "08:30", "08:40", "08:50", "09:00", "09:10", "09:20", "09:30", "09:40", "09:50", "10:00", "10:10", "10:20", "10:30", "10:45", "11:00", "11:15", "11:30", "11:45", "12:00", "12:10", "12:20", "12:30", "12:40", "12:50", "13:00", "13:15", "13:30", "13:45", "14:00", "14:20", "14:40", "15:00", "15:13", "15:23", "15:33", "15:43", "15:53", "16:03", "16:13", "16:23", "16:33", "16:53", "17:13", "17:33", "17:53", "18:23"],
+                    in: ["07:21", "07:27", "07:37", "07:47", "07:57", "08:07", "08:17", "08:27", "08:37", "08:47", "08:57", "09:07", "09:17", "09:27", "09:37", "09:47", "09:57", "10:07", "10:17", "10:32", "10:47", "11:02", "11:17", "11:32", "11:47", "11:57", "12:07", "12:17", "12:27", "12:37", "12:47", "13:02", "13:17", "13:32", "13:47", "14:07", "14:27", "14:47", "15:00", "15:10", "15:20", "15:30", "15:40", "15:50", "16:00", "16:10", "16:20", "16:40", "17:00", "17:20", "17:40", "18:10"], shuttleRange: null
+                }
             },
             'B': {
                 weekday: {
@@ -653,15 +656,22 @@
                     out: ["08:16", "08:44", "09:11", "09:34", "10:25", "11:36", "12:36", "13:16", "14:16", "15:29", "16:29", "17:20", "17:49", "18:20", "19:14"],
                     in: ["08:08", "08:36", "09:03", "09:26", "10:17", "11:28", "12:28", "13:08", "14:08", "15:21", "16:21", "17:12", "17:41", "18:12", "19:06"],
                     shuttleRange: null
+                },
+                rinji: {
+                    out: ["07:34", "07:44", "07:55", "08:06", "08:16", "08:32", "08:44", "08:51", "09:02", "09:11", "09:25", "09:34", "09:40", "09:47", "09:56", "10:05", "10:14", "10:25", "10:36", "10:45", "10:56", "11:16", "11:36", "11:56", "12:03", "12:16", "12:23", "12:36", "12:43", "12:56", "13:16", "13:36", "13:56", "14:16", "14:36", "14:56", "15:09", "15:20", "15:29", "15:39", "15:49", "15:59", "16:09", "16:20", "16:29", "16:49", "17:09", "17:29", "17:49", "18:20"],
+                    in: ["07:26", "07:36", "07:47", "07:58", "08:08", "08:24", "08:36", "08:43", "08:54", "09:03", "09:17", "09:26", "09:32", "09:39", "09:48", "09:57", "10:06", "10:17", "10:28", "10:37", "10:48", "11:08", "11:28", "11:48", "11:55", "12:08", "12:15", "12:28", "12:35", "12:48", "13:08", "13:28", "13:48", "14:08", "14:28", "14:48", "15:01", "15:12", "15:21", "15:31", "15:41", "15:51", "16:01", "16:12", "16:21", "16:41", "17:01", "17:21", "17:41", "18:12"], shuttleRange: null
                 }
             },
             'C': {
                 weekday: {
                     out: ["08:14", "08:34", "08:54", "09:14", "10:20", "10:45", "17:10"],
                     in: ["08:04", "08:24", "08:44", "09:04", "10:10", "10:35", "17:00"],
+
                     shuttleRange: null
                 },
-                weekend: { out: [], in: [], shuttleRange: null }
+                weekend: { out: [], in: [], shuttleRange: null },
+
+                rinji: { out: [], in: [], shuttleRange: null }
             }
         };
 
@@ -732,6 +742,7 @@
                     { pos: 75, label: "片倉高校前" },
                     { pos: 100, label: "大学キャンパス(発)" }
                 ]
+
             }
         };
 
@@ -739,10 +750,24 @@
 
         function getDayType() {
             const now = new Date();
+
+            // 📅 特定の日付の判定（年、月、日を取得）
+            const y = now.getFullYear();
+            const m = now.getMonth() + 1; // 月は0から始まるので+1
+            const d = now.getDate();
+
+            // 🔴【例】2026年6月21日の場合、曜日に関係なく特別ダイヤにする
+            if (y === 2026 && m === 6 && d === 14 || (y === 2026 && m === 6 && d === 21) || (y === 2026 && m === 7 && d === 12) || (y === 2026 && m === 7 && d === 26)) {
+                return 'rinji'; // 例：臨時ダイヤ用のキーを返す
+            }
+
+            // 今後別の特別日を追加したい場合は、ここに else if で並べていけばOKです
+            // if (y === 2026 && m === 8 && d === 1) { return 'event_0801'; }
+
             const day = now.getDay();
-            if (day === 0) return 'sunday'; // 日曜日を追加
+            if (day === 0) return 'sunday';  // 日曜日（運休）
             if (day === 6) return 'weekend'; // 土曜日
-            return 'weekday'; // 平手
+            return 'weekday';                // 平日
         }
 
         // 修正：複数の時間帯に対応したシャトル判定
@@ -766,7 +791,7 @@
             document.getElementById('live-date').innerText = `${y}/${m}/${d} (${day})`;
         }
 
-        // 💡 switchTab 関数を以下に置き換え
+        // 💡 switchTab 関数を以下に置き換え6910mnb2435
         function switchTab(tab) {
             const isDetail = tab === 'Detail';
             const isRecord = tab === 'Record';
@@ -822,7 +847,14 @@
             const config = schedules[currentRoute][dayType];
 
             document.getElementById('route-card').classList.toggle('is-shuttle', isCurrentlyShuttle(config.shuttleRange));
-            document.getElementById('day-label').innerText = `運行ダイヤ：${dayType === 'weekend' ? '休日' : '平日'}`;
+            let dayLabelText = '平日';
+            if (dayType === 'weekend') {
+                dayLabelText = '休日';
+            } else if (dayType.includes('rinji')) {
+                dayLabelText = 'オープンキャンパス'; // 「rinji」という文字が含まれていれば自動的に「臨時」になります
+            }
+
+            document.getElementById('day-label').innerText = `運行ダイヤ：${dayLabelText}`;
 
             // 修正ポイント：時刻とカウントダウンをセットで表示する
             const format = (times) => {
@@ -1121,39 +1153,39 @@
         }
 
         function renderMyHistory() {
-    let historyList = JSON.parse(localStorage.getItem('my_bus_ride_history')) || [];
-    const container = document.getElementById('my-history-content');
-    if (!container) return;
-    
-    if (historyList.length === 0) {
-        container.innerHTML = `<div style="text-align:center; color:#94a3b8; padding: 10px 0;">乗車履歴はありません。</div>`;
-        return;
-    }
-    
-    // 📅 過去1ヶ月（30日前）の基準日時を計算
-    const now = new Date();
-    const oneMonthAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30日前のミリ秒数
-    
-    // 過去1ヶ月以内の履歴だけに絞り込む（フィルタリング）
-    const recentHistory = historyList.filter(item => {
-        // 保存されている文字列 "YYYY/MM/DD HH:MM" をDateオブジェクトに変換
-        const itemDate = new Date(item.date);
-        // 30日前より新しい（大きい）データのみ true を返す
-        return itemDate >= oneMonthAgo;
-    });
-    
-    // もし1ヶ月以内のデータが1件もない場合
-    if (recentHistory.length === 0) {
-        container.innerHTML = `<div style="text-align:center; color:#94a3b8; padding: 10px 0;">直近1ヶ月以内の乗車履歴はありません。</div>`;
-        return;
-    }
-    
-    // 絞り込んだ「直近1ヶ月分」のデータのみをHTML化
-    container.innerHTML = recentHistory.map((item) => {
-        // 削除ボタンで正しく元の配列から削除できるように、元の historyList における正確なインデックスを見つける
-        const originalIndex = historyList.findIndex(h => h.date === item.date && h.busId === item.busId);
-        
-        return `
+            let historyList = JSON.parse(localStorage.getItem('my_bus_ride_history')) || [];
+            const container = document.getElementById('my-history-content');
+            if (!container) return;
+
+            if (historyList.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:#94a3b8; padding: 10px 0;">乗車履歴はありません。</div>`;
+                return;
+            }
+
+            // 📅 過去1ヶ月（30日前）の基準日時を計算
+            const now = new Date();
+            const oneMonthAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30日前のミリ秒数
+
+            // 過去1ヶ月以内の履歴だけに絞り込む（フィルタリング）
+            const recentHistory = historyList.filter(item => {
+                // 保存されている文字列 "YYYY/MM/DD HH:MM" をDateオブジェクトに変換
+                const itemDate = new Date(item.date);
+                // 30日前より新しい（大きい）データのみ true を返す
+                return itemDate >= oneMonthAgo;
+            });
+
+            // もし1ヶ月以内のデータが1件もない場合
+            if (recentHistory.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:#94a3b8; padding: 10px 0;">直近1ヶ月以内の乗車履歴はありません。</div>`;
+                return;
+            }
+
+            // 絞り込んだ「直近1ヶ月分」のデータのみをHTML化
+            container.innerHTML = recentHistory.map((item) => {
+                // 削除ボタンで正しく元の配列から削除できるように、元の historyList における正確なインデックスを見つける
+                const originalIndex = historyList.findIndex(h => h.date === item.date && h.busId === item.busId);
+
+                return `
             <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
                 <div>
                     <span style="color: #64748b; font-family: monospace;">[${item.date}]</span>
@@ -1164,8 +1196,8 @@
                 </button>
             </div>
         `;
-    }).join('');
-}
+            }).join('');
+        }
 
         // 全記録リセット関数
         function clearRecord() {

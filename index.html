@@ -836,37 +836,59 @@
         }
 
         function updateCountdowns() {
-            const dayType = getDayType();
-            if (dayType === 'sunday') {
-                document.getElementById('day-label').innerText = `運行ダイヤ：日曜（運休）`;
-                document.getElementById('count-out').innerText = "運休";
-                document.getElementById('count-in').innerText = "運休";
-                return;
-            }
+    const dayType = getDayType();
+    if (dayType === 'sunday') {
+        document.getElementById('day-label').innerText = `運行ダイヤ：日曜（運休）`;
+        document.getElementById('count-out').innerText = "運休";
+        document.getElementById('count-in').innerText = "運休";
+        return;
+    }
 
-            const config = schedules[currentRoute][dayType];
+    const config = schedules[currentRoute][dayType];
 
-            document.getElementById('route-card').classList.toggle('is-shuttle', isCurrentlyShuttle(config.shuttleRange));
-            let dayLabelText = '平日';
-            if (dayType === 'weekend') {
-                dayLabelText = '休日';
-            } else if (dayType.includes('rinji')) {
-                dayLabelText = 'オープンキャンパス'; // 「rinji」という文字が含まれていれば自動的に「臨時」になります
-            }
+    document.getElementById('route-card').classList.toggle('is-shuttle', isCurrentlyShuttle(config.shuttleRange));
+    
+    // 前回のステップに基づいたダイヤラベル表示（平日・休日・臨時）
+    let dayLabelText = '平日';
+    if (dayType === 'weekend') {
+        dayLabelText = '休日';
+    } else if (dayType.includes('event') || dayType === 'rinji') {
+        dayLabelText = '臨時';
+    }
+    document.getElementById('day-label').innerText = `運行ダイヤ：${dayLabelText}`;
 
-            document.getElementById('day-label').innerText = `運行ダイヤ：${dayLabelText}`;
+    // 💡 ここの format 関数を修正して、改行と到着時間を追加します
+    const format = (times, direction) => {
+        const res = calcNext(times);
+        if (!res) return "終了";
 
-            // 修正ポイント：時刻とカウントダウンをセットで表示する
-            const format = (times) => {
-                const res = calcNext(times);
-                if (!res) return "終了";
-                // res.time には "10:30" などの発車時刻が入るように calcNext も後ほど微修正します
-                return `${res.time}発 (${res.min}:${res.sec})`;
-            };
-
-            document.getElementById('count-out').innerText = format(config.out);
-            document.getElementById('count-in').innerText = format(config.in);
+        // 発車時刻(res.time)を「時」と「分」に分ける
+        const [h, m] = res.time.split(':').map(Number);
+        // 現在の路線の所要時間を取得
+        const duration = travelTimes[currentRoute][direction];
+        
+        // 到着時刻の計算
+        let arrivalM = m + duration;
+        let arrivalH = h;
+        if (arrivalM >= 60) {
+            arrivalH += Math.floor(arrivalM / 60);
+            arrivalM = arrivalM % 60;
         }
+        if (arrivalH >= 24) {
+            arrivalH = arrivalH % 24;
+        }
+        
+        // 2桁になるようにゼロ埋めフォーマット
+        const arrivalTimeStr = `${String(arrivalH).padStart(2, '0')}:${String(arrivalM).padStart(2, '0')}`;
+
+        // 💡 【修正点】発車(残り時間) <br> (到着時間着) の形で返す
+        return `${res.time}発 (${res.min}:${res.sec})<br><span style="font-size: 0.95rem; color: #000; font-weight: normal;">${arrivalTimeStr}着</span>`;
+    };
+
+    // 💡 引数に方向 ('out' / 'in') を渡すように変更
+    document.getElementById('count-out').innerHTML = format(config.out, 'out');
+    document.getElementById('count-in').innerHTML = format(config.in, 'in');
+}
 
         function toggleTimetable() {
             const el = document.getElementById('timetable-display');

@@ -478,6 +478,19 @@
             border: 1px solid #cbd5e1;
         }
 
+        /*2026.7.23追加*/
+        /* <style> タグ内に追加 */
+        .in-bus-card {
+             cursor: grab; /* 移動用アイコンを表示 */
+        }
+        .in-bus-card:active {
+             cursor: grabbing;
+        }
+        .in-bus-card.dragging {
+            opacity: 0.5;
+            border: 2px dashed var(--primary);
+        }
+
 
 
         .bus-dest-label {
@@ -771,7 +784,7 @@
             const d = now.getDate();
 
             // 🔴【例】2026年6月21日の場合、曜日に関係なく特別ダイヤにする
-            if ((y === 2026 && m === 8 && d === 1) || (y === 2026 && m === 8 && d === 2) || (y === 2026 && m === 7 && d === 19) || (y === 2026 && m === 7 && d === 12) || (y === 2026 && m === 7 && d === 26)) {
+            if ((y === 2026 && m === 8 && d === 1) || (y === 2026 && m === 8 && d === 2) ||(y === 2026 && m === 9 && d === 13) || (y === 2026 && m === 8 && d === 30) || (y === 2026 && m === 8 && d === 23) || (y === 2026 && m === 8 && d === 16) || (y === 2026 && m === 8 && d === 15) || (y === 2026 && m === 7 && d === 25) || (y === 2026 && m === 7 && d === 26)) {
                 return 'rinji'; // 例：臨時ダイヤ用のキーを返す
             }
 
@@ -852,6 +865,24 @@
             }
             return null;
         }
+        // 次のバスと、さらにその次のバスを取得する関数
+function calcNextTwo(times) {
+    const now = new Date();
+    const upcoming = [];
+    for (let t of times) {
+        const [h, m] = t.split(':').map(Number);
+        const target = new Date(); target.setHours(h, m, 0, 0);
+        const diffMs = target - now;
+        if (diffMs > 0) {
+            const sec = Math.floor(diffMs / 1000);
+            const min = Math.floor(sec / 60);
+            const remainderSec = String(sec % 60).padStart(2, '0');
+            upcoming.push({ min: min, sec: remainderSec, time: t });
+            if (upcoming.length === 2) break; // 2本分取得したら終了
+        }
+    }
+    return upcoming; // [{...next1}, {...next2}] の配列で返却
+}
 
         function updateCountdowns() {
     const dayType = getDayType();
@@ -878,32 +909,41 @@
     document.getElementById('day-label').innerText = `運行ダイヤ：${dayLabelText}`;
 
     // 💡 ここの format 関数を修正して、改行と到着時間を追加します
-    const format = (times, direction) => {
-        const res = calcNext(times);
-        if (!res) return "終了";
+    // updateCountdowns 内の format 関数を以下の通り変更
+const format = (times, direction) => {
+    const upcoming = calcNextTwo(times);
+    if (upcoming.length === 0) return "終了";
 
-        // 発車時刻(res.time)を「時」と「分」に分ける
-        const [h, m] = res.time.split(':').map(Number);
-        // 現在の路線の所要時間を取得
-        const duration = travelTimes[currentRoute][direction];
-        
-        // 到着時刻の計算
-        let arrivalM = m + duration;
-        let arrivalH = h;
-        if (arrivalM >= 60) {
-            arrivalH += Math.floor(arrivalM / 60);
-            arrivalM = arrivalM % 60;
-        }
-        if (arrivalH >= 24) {
-            arrivalH = arrivalH % 24;
-        }
-        
-        // 2桁になるようにゼロ埋めフォーマット
-        const arrivalTimeStr = `${String(arrivalH).padStart(2, '0')}:${String(arrivalM).padStart(2, '0')}`;
+    const res = upcoming[0]; // 次のバス（1本目）
 
-        // 💡 【修正点】発車(残り時間) <br> (到着時間着) の形で返す
-        return `${res.time}発 (${res.min}:${res.sec})<br><span style="font-size: 0.95rem; color: #000; font-weight: normal;">${arrivalTimeStr}着</span>`;
-    };
+    // 1本目の到着時刻計算
+    const [h, m] = res.time.split(':').map(Number);
+    const duration = travelTimes[currentRoute][direction];
+    let arrivalM = m + duration;
+    let arrivalH = h;
+    if (arrivalM >= 60) {
+        arrivalH += Math.floor(arrivalM / 60);
+        arrivalM = arrivalM % 60;
+    }
+    if (arrivalH >= 24) arrivalH = arrivalH % 24;
+    const arrivalTimeStr = `${String(arrivalH).padStart(2, '0')}:${String(arrivalM).padStart(2, '0')}`;
+
+    // 2本目のバス（次々発）のテキスト作成（カウントダウンなし）
+    let nextAfterText = "";
+    if (upcoming.length > 1) {
+        const nextTwoTime = upcoming[1].time; // 例: "08:10"
+        nextAfterText = `<div style="font-size: 0.90rem; color: #647498; margin-top: 4px; font-weight: normal;">Next：${nextTwoTime}</div>`;
+    } else {
+        nextAfterText = `<div style="font-size: 0.90rem; color: #94a3b8; margin-top: 4px; font-weight: normal;">Next：なし</div>`;
+    }
+
+    // 次のバスの表示（発車・カウントダウン・到着）＋ その下に次々の発車時刻
+    return `
+        ${res.time}発 (${res.min}:${res.sec})<br>
+        <span style="font-size: 0.95rem; color: #000; font-weight: normal;">${arrivalTimeStr}着</span>
+        ${nextAfterText}
+    `;
+};
 
     // 💡 引数に方向 ('out' / 'in') を渡すように変更
     document.getElementById('count-out').innerHTML = format(config.out, 'out');
@@ -1044,27 +1084,73 @@
             // 即座に描画に反映
             updateVerticalMap();
         }
-        function renderAll() {
-            const active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
+        // ① renderAll 関数を書き換え (draggable属性とイベントを追加)
+function renderAll() {
+    const active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
 
-            document.getElementById('op-list').innerHTML = active.map(id => {
-                const busInfo = busMaster.find(b => b.id === id);
-                const imgTag = (busInfo && busInfo.img) ? `<img src="${busInfo.img}" class="bus-card-thumb">` : '';
+    document.getElementById('op-list').innerHTML = active.map(id => {
+        const busInfo = busMaster.find(b => b.id === id);
+        const imgTag = (busInfo && busInfo.img) ? `<img src="${busInfo.img}" class="bus-card-thumb">` : '';
 
-                return `
-            <div class="in-bus-card">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    ${imgTag}
-                    <strong>${id}</strong>
-                </div>
-                <button class="out-btn" onclick="busAction('${id}', 'out')">OUT</button>
-            </div>
-        `;
-            }).join('') || '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.8rem;">現在運用なし</div>';
+        return `
+    <div class="in-bus-card" draggable="true" data-id="${id}" 
+         ondragstart="handleDragStart(event)" 
+         ondragover="handleDragOver(event)" 
+         ondrop="handleDrop(event)" 
+         ondragend="handleDragEnd(event)">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="color: #94a3b8; font-size: 0.8rem; cursor: grab;">☰</span>
+            ${imgTag}
+            <strong>${id}</strong>
+        </div>
+        <button class="out-btn" onclick="busAction('${id}', 'out')">OUT</button>
+    </div>
+`;
+    }).join('') || '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.8rem;">現在運用なし</div>';
 
-            updateCountdowns();
-            updateVerticalMap();
-        }
+    updateCountdowns();
+    updateVerticalMap();
+}
+
+// ② ドラッグ＆ドロップ用の制御関数群を新規追加
+let draggedElement = null;
+
+function handleDragStart(e) {
+    draggedElement = e.currentTarget;
+    e.currentTarget.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(e) {
+    e.preventDefault(); // dropを許可するために必要
+    e.dataTransfer.dropEffect = 'move';
+}
+
+async function handleDrop(e) {
+    e.preventDefault();
+    const targetCard = e.currentTarget;
+
+    if (draggedElement && draggedElement !== targetCard) {
+        const container = document.getElementById('op-list');
+        const cards = Array.from(container.querySelectorAll('.in-bus-card'));
+        
+        const draggedIndex = cards.indexOf(draggedElement);
+        const targetIndex = cards.indexOf(targetCard);
+
+        // 配列の並び順を並び替え
+        let active = JSON.parse(localStorage.getItem(`active_${currentRoute}`)) || [];
+        const [movedItem] = active.splice(draggedIndex, 1);
+        active.splice(targetIndex, 0, movedItem);
+
+        // Firestoreおよびローカルストレージに新しい並び順を保存して全員に同期
+        await window.fs.setDoc(window.fs.doc(window.db, "active_buses", currentRoute), { buses: active });
+    }
+}
+
+function handleDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+    draggedElement = null;
+}
 
         function syncActiveBuses() {
             ['A', 'B', 'C'].forEach(route => {

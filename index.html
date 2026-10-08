@@ -461,9 +461,9 @@
 
         /* 投稿後カード内の車両画像 */
         .bus-card-thumb {
-            width: 40px;
-            height: 30px;
-            object-fit: cover;
+            width: 60px;
+            height: 40px;
+            object-fit: contain;
             /* 縦横比を維持して枠に収める */
             border-radius: 4px;
             border: 1px solid #cbd5e1;
@@ -473,7 +473,7 @@
         .table-bus-thumb {
             width: 32px;
             height: 24px;
-            object-fit: cover;
+            object-fit: contain;
             border-radius: 3px;
             border: 1px solid #cbd5e1;
         }
@@ -1215,7 +1215,7 @@ function renderAll() {
 
     document.getElementById('op-list').innerHTML = active.map(id => {
         const busInfo = busMaster.find(b => b.id === id);
-        const imgTag = (busInfo && busInfo.img) ? `<img src="${busInfo.img}" class="bus-card-thumb">` : '';
+       const imgTag = `<img src="./busicon/${id}.png" class="table-bus-thumb" alt="${id}">`;
 
         return `
     <div class="in-bus-card" draggable="true" data-id="${id}" 
@@ -1590,7 +1590,7 @@ function handleDragEnd(e) {
 
         document.getElementById('master-grid').innerHTML = busMaster.map(b => `<div class="in-btn" onclick="busAction('${b.id}', 'in')">${b.id}</div>`).join('');
         document.querySelector('#detail-table tbody').innerHTML = busMaster.map(b => {
-            const imgTag = b.img ? `<img src="${b.img}" class="table-bus-thumb">` : '';
+           const imgTag = `<img src="./busicon/${b.id}.png" class="bus-card-thumb" alt="${b.id}">`;
             return `
                 <tr>
                     <td class="clickable-id" onclick="showHistory('${b.id}')" style="display: flex; align-items: center; gap: 8px;">
